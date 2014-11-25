@@ -1,0 +1,47 @@
+# This file lists all standard library modules. -*- Makefile -*-
+# It is used in particular to know what to expunge in toplevels.
+# $Id: StdlibModules,v 1.2 2003/11/26 10:57:14 starynke Exp $
+
+STDLIB_MODULES=\
+  arg \
+  array \
+  arrayLabels \
+  buffer \
+  callback \
+  camlinternalOO \
+  char \
+  complex \
+  digest \
+  filename \
+  format \
+  gc \
+  genlex \
+  hashtbl \
+  int32 \
+  int64 \
+  lazy \
+  lexing \
+  list \
+  listLabels \
+  map \
+  marshal \
+  moreLabels \
+  nativeint \
+  obj \
+  oo \
+  parsing \
+  pervasives \
+  printexc \
+  printf \
+  queue \
+  random \
+  scanf \
+  set \
+  sort \
+  stack \
+  stdLabels \
+  stream \
+  string \
+  stringLabels \
+  sys \
+  weak

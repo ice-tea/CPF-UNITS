@@ -1,0 +1,12 @@
+EXE=
+O=o
+A=a
+OPT=
+OTOP=../..
+RANLIB=ranlib
+RANLIBCMD=ranlib
+OLIBDIR=$(OTOP)/boot
+PREFIX=/usr/local
+BINDIR=/usr/local/bin
+LIBDIR=/usr/local/lib/ocaml
+MANDIR=/usr/local/man
