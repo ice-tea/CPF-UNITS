@@ -1,0 +1,1813 @@
+in cpf-base .
+
+***
+*** TODO
+***
+*** 1. Add support for @old
+***
+
+*****************************************************************************
+***
+*** UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS
+***
+*** These modules provide units syntax/semantics.
+***
+*** UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS UNITS
+***
+*****************************************************************************
+
+***
+*** The theory of units. These may be organized more stringently
+*** later (into hierarchies based on dimension, such as length), but
+*** for now all are "flat" (units are syntactically distinct).
+***
+fmod UNITS is
+protecting RAT .
+protecting FLOAT .
+protecting CONVERSION .
+protecting QID .
+including TYPE-ANNOTATION-SYNTAX .
+
+***
+*** The basic sort for units. Also included are constructors
+*** for basic units representing unitless values, etc, as well
+*** as constructors for forming powers and products.
+***
+sorts BaseUnit Unit .
+subsort BaseUnit < Unit .
+ops $noUnit $nounit $any $fail $cons : -> BaseUnit .
+op _^_ : BaseUnit Rat -> BaseUnit [prec 10] .
+op _^_ : BaseUnit Float -> BaseUnit [prec 10] .
+op __ : BaseUnit BaseUnit -> BaseUnit [assoc comm prec 15] .
+op _^_ : Unit Rat -> Unit [ditto] .
+op _^_ : Unit Float -> Unit [ditto] .
+op __ : Unit Unit -> Unit [ditto] .
+op *_ : Unit -> Unit .
+eq $nounit = $noUnit .
+
+***
+*** Create a fresh unit.
+***
+op NUnit : Int -> BaseUnit .
+
+***
+*** Just to make things simpler, make type variables units
+***
+subsort TypeVar < Unit .
+
+***
+*** Unit simplification equations.
+***
+vars U U' : Unit .  vars N M : Rat . vars F F' : Float .
+
+***
+*** First, for "special" units
+***
+eq U $noUnit = U .
+eq U $any = U .
+eq U $fail = $fail .
+eq U $cons = U .
+
+eq $fail ^ N = $fail .
+eq $any ^ N = $any .
+eq $noUnit ^ N = $noUnit .
+eq $cons ^ N = $cons .
+
+eq $fail ^ F = $fail .
+eq $any ^ F = $any .
+eq $noUnit ^ F = $noUnit .
+eq $cons ^ F = $cons .
+
+***
+*** Now, simplification for all units.
+***
+eq U ^ 0 = $noUnit .
+eq U ^ 0.0 = $noUnit .
+eq U ^ 1 = U .
+eq U ^ 1.0 = U .
+eq U U = U ^ 2 .
+eq U (U ^ N) = U ^ (N + 1) .
+eq U (U ^ F) = U ^ (F + 1.0) .
+eq (U ^ N) (U ^ M) = U ^ (N + M) .
+eq (U ^ F) (U ^ F') = U ^ (F + F') .
+eq (U ^ N) (U ^ F) = U ^ (float(N) + F) .
+eq (U U') ^ N = (U ^ N) (U' ^ N) .
+eq (U U') ^ F = (U ^ F) (U' ^ F) .
+eq (U ^ N) ^ M = U ^ (N * M) .
+eq (U ^ F) ^ F' = U ^ (F * F') .
+eq (U ^ N) ^ F = U ^ (float(N) * F) .
+eq (U ^ F) ^ M = U ^ (F * float(M)) .
+
+***
+*** Check for compatible units. The $cons and $any units are
+*** compatible with any other unit, $fail is incompatible with
+*** all units, and otherwise the units much match to be compatible.
+***
+op compatible : Unit Unit -> Bool .
+eq compatible(U, U') =
+(U =/= $fail and U == U' or
+U =/= $fail and U' == $any or
+U' =/= $fail and U == $any or
+U =/= $fail and U' == $cons or
+U' =/= $fail and U == $cons) .
+
+***
+*** Determine if the unit represents an actual unit, or a special
+*** unitless "placeholder" unit.
+***
+op isNoUnit : Unit -> Bool .
+eq isNoUnit(U) =
+(U == $any or U == $noUnit or U == $cons) .
+endfm
+
+***
+*** Define the logical portion of the unit language. This, for the most
+*** part, is separate from the language under analysis. We have no concept
+*** of checking units for names yet, for instance. Again, we provide some
+*** short forms as well, for convenience.
+***
+fmod UNIT-EXP is
+protecting UNITS .
+including POLICY-SYNTAX .
+
+sort UnitExp .
+subsort UnitExp < PolicyExp .
+subsort Unit < PolicyVal .
+
+vars UE UE' : UnitExp . var U U' U'' : Unit .
+
+op _and_ : UnitExp UnitExp -> UnitExp [assoc prec 55] .
+op _/\_ : UnitExp UnitExp -> UnitExp [assoc prec 55] .
+eq UE /\ UE' = UE and UE' .
+
+op _or_ : UnitExp UnitExp -> UnitExp [assoc prec 59] .
+op _\/_ : UnitExp UnitExp -> UnitExp [assoc prec 59] .
+eq UE \/ UE' = UE or UE' .
+
+op _implies_ : UnitExp UnitExp -> UnitExp [prec 61 gather (e E)] .
+op _->_ : UnitExp UnitExp -> UnitExp [prec 61 gather (e E)] .
+eq UE -> UE' = UE implies UE' .
+
+op not_ : UnitExp -> UnitExp [prec 53] .
+op !_ : UnitExp -> UnitExp [prec 53] .
+eq ! UE = not UE .
+
+op _=_ : Unit Unit -> UnitExp [prec 50] .
+op _=_ : Unit UnitExp -> UnitExp [prec 52 gather (e E)] .
+
+***
+*** Change more complex assignments (a = b = c = d = ...)
+*** into multiple assignments separated by and. We need to
+*** do these in the right order, so "a = b = c" needs to
+*** be "b = c and a = b".
+***
+op trans : UnitExp -> UnitExp .
+eq trans(U = UE) = trans(UE) and (U = firstUnit(UE)) .
+eq trans(U = U') = U = U' .
+
+op firstUnit : UnitExp -> Unit .
+eq firstUnit(U = UE) = U .
+eq firstUnit(U = U') = U .
+
+***
+*** Can use just "True" and "False" in equations if need be.
+***
+ops True False T F : -> UnitExp .
+eq T = True . eq F = False .
+
+***
+*** Merge units in cases where one unit should take precedence.
+*** For instance, if x has unit meter, then x + 5 should also have
+*** unit meter, so mergeUnits(meter,cons) will be meter.
+***
+op mergeUnits : Unit Unit -> Unit .
+
+eq mergeUnits ($any,U) = U .
+eq mergeUnits ($cons,U) = U .
+eq mergeUnits (U,$any) = U .
+eq mergeUnits (U,$cons) = U .
+eq mergeUnits ($fail,U) = $fail .
+eq mergeUnits (U,$fail) = $fail .
+eq mergeUnits (U,U) = U .
+ceq mergeUnits (U,U') = $fail if U =/= U' .
+endfm
+
+***
+***
+*** Some basic, predefined units and unit expressions.
+*** The SI units are based on http://physics.nist.gov/cuu/Units/units.html.
+***
+fmod BASIC-UNITS is
+protecting UNITS .
+
+*** Units of length.
+ops $meter $m $foot $feet $f $mile $kilometer $km $cm $centimeter : -> BaseUnit .
+
+*** Units of mass.
+ops $kilogram $kg $pound $lb : -> BaseUnit .
+
+*** Units of time.
+ops $second $s : -> BaseUnit .
+
+*** Units of electric current.
+ops $ampere $A : -> BaseUnit .
+
+*** Units of thermodynamic temperature.
+ops $kelvin $K $Celsius $C $Fahrenheit $F : -> BaseUnit .
+
+*** Units of amount of substance.
+ops $mole $mol : -> BaseUnit .
+
+*** Units of luminous intensity.
+ops $candela $cd : -> BaseUnit .
+
+endfm
+
+***
+*** Some derived units. Note that we don't consider feet to be
+*** derived from meters, for instance, since we don't include
+*** conversion factors. Obviously more derived units can be
+*** added if desired.
+***
+fmod DERIVED-UNITS is
+including BASIC-UNITS .
+
+ops $newton $N : -> BaseUnit .
+eq $newton = $kg $meter $second ^ -2  .
+
+endfm
+
+***
+*** Some simple equations that will keep unit names in short
+*** form (m, not meter). Note that either this module or the
+*** next should be included, but NOT BOTH!
+***
+fmod UNITS-SHORT-FORM is
+protecting BASIC-UNITS .
+protecting DERIVED-UNITS .
+
+***
+*** For basic units
+***
+eq $meter = $m .
+eq $kilometer = $km .
+eq $centimeter = $cm .
+eq $foot = $f .
+eq $feet = $f .
+eq $kilogram = $kg .
+eq $pound = $lb .
+eq $second = $s .
+eq $ampere = $A .
+eq $kelvin = $K .
+eq $Fahrenheit  = $F .
+eq $Celsius = $C .
+eq $mole =  $mol .
+eq $candela = $cd .
+
+***
+*** For provided derived units
+***
+eq $newton = $N .
+endfm
+
+***
+*** Some simple equations that will keep unit names in long
+*** form (meter, not m). Note that either this module or the
+*** prior module should be included, but NOT BOTH!
+***
+fmod UNITS-LONG-FORM is
+protecting BASIC-UNITS .
+protecting DERIVED-UNITS .
+
+***
+*** For basic units
+***
+eq $m = $meter .
+eq $cm = $centimeter .
+eq $f = $feet .
+eq $foot = $feet .
+eq $km = $kilometer .
+eq $kg = $kilogram .
+eq $lb = $pound .
+eq $s = $second .
+eq $A = $ampere .
+eq $K = $kelvin .
+eq $F = $Fahrenheit .
+eq $C = $Celsius .
+eq $mol = $mole .
+eq $cd = $candela .
+
+***
+*** For provided derived units
+***
+eq $N = $newton .
+endfm
+
+***
+*** Start tying the units language in with C. Here,
+*** we extend units by allowing C constant expressions
+*** into the unit syntax and allowing the checking
+*** of units associated to expressions.
+***
+***
+*** TODO: It would be good to add logic to perform
+*** simple calculations here if needed. Even better
+*** would be to allow variables, like m^x, but this
+*** will allow abstraction over two domains -- x here
+*** would be an abstract number, for instance, not a unit.
+***
+fmod UNITS-FOR-C is
+extending UNIT-EXP .
+protecting EXP-SYNTAX .
+
+***
+*** First, allow C integer constants into unit expressions.
+***
+op _^_ : Unit CInt -> Unit [prec 10] .
+op _^_ : Unit CFloat -> Unit [prec 10] .
+
+***
+*** Operation to determine the unit of an expression
+***
+op @unit : Exp -> Unit .
+
+***
+*** Unit rules for units with expressions. We currently
+*** just use constants ints.
+***
+vars U U' : Unit .
+var E E' : Exp . var I1 : Int .
+vars I I' : CInt . var F : CFloat . var F1 : Float .
+
+eq $fail ^ I = $fail .
+eq $any ^ I = $any .
+eq $noUnit ^ I = $noUnit .
+eq U ^ i(I1) = U ^ I1 .
+
+eq $fail ^ F = $fail .
+eq $any ^ F = $any .
+eq $noUnit ^ F = $noUnit .
+eq U ^ f(F1) = U ^ F1 .
+
+***
+*** Determine units for constants
+***
+var C : Constant .
+eq @unit(C) = $cons .
+endfm
+
+***
+*** C Units statements. This is syntax, but needs to be down here since it
+*** is units-specific (using the units modules above). Added syntax includes
+*** assert and assume statements; pre- and post-conditions are transformed
+*** into these first. $any non-unit assertions and assumptions are just
+*** dropped, since they are part of another policy.
+***
+fmod UNITS-POLICY-SYNTAX is
+extending POLICY-SYNTAX .
+extending DIRECTIVES-SYNTAX .
+extending UNITS-FOR-C .
+
+var UE : UnitExp . var Q : Var . var EL : ExpList .
+
+***
+*** Keep general and UNITS assertions, but discard others
+***
+eq (#CPFAssume (n('UNITS), UE) ;) = (assume UE ;) .
+eq (#CPFAssert (n('UNITS), UE) ;) = (assert UE ;) .
+eq (#CPFIAssume (n('UNITS), UE) ;) = (iassume UE ;) .
+eq (#CPFIAssert (n('UNITS), UE) ;) = (iassert UE ;) .
+eq (#CPFInvariant (n('UNITS), UE) ;) = (#invariant UE ;) .
+eq (#CPFUnlock (n('UNITS), EL) ;) = (#unlock EL ;) .
+eq (#CPFHavoc (n('UNITS), EL) ;) = (#havoc EL ;) .
+
+eq (#CPFAssume (n('ALL), UE) ;) = (assume UE ;) .
+eq (#CPFAssert (n('ALL), UE) ;) = (assert UE ;) .
+eq (#CPFIAssume (n('ALL), UE) ;) = (iassume UE ;) .
+eq (#CPFIAssert (n('ALL), UE) ;) = (iassert UE ;) .
+eq (#CPFInvariant (n('ALL), UE) ;) = (#invariant UE ;) .
+eq (#CPFUnlock (n('ALL), EL) ;) = (#unlock EL ;) .
+eq (#CPFHavoc (n('ALL), EL) ;) = (#havoc EL ;) .
+
+eq (#CPFAssume (Q, UE) ;) = skip; [owise] .
+eq (#CPFAssert (Q, UE) ;) = skip; [owise] .
+eq (#CPFIAssume (Q, UE) ;) = skip; [owise] .
+eq (#CPFIAssert (Q, UE) ;) = skip; [owise] .
+eq (#CPFInvariant (Q, UE) ;) = skip; [owise] .
+eq (#CPFUnlock (Q, EL) ;) = skip; [owise] .
+eq (#CPFHavoc (Q, EL) ;) = skip; [owise] .
+
+***
+*** Remove function call annotations; we don't use them.
+***
+eq #CPFCall(S:String) = skip; .
+endfm
+
+***
+*** State additions for units
+***
+fmod UNITS-STATE is
+including STATE .
+
+op c : Int -> State [format (r! o)] . *** new unit counter
+endfm
+
+***
+*** Basic expression values for units
+***
+fmod EXP-UNITS-BASIC is
+including UNITS-FOR-C .
+including UNITS-STATE .
+
+op u : Unit -> Value .
+endfm
+
+***
+*** Units-specific lookup rules. These are for lookups that return
+*** units, versus those that drill down into structures, dereference
+*** to other pointers, etc, which are policy-generic.
+***
+fmod EXP-SEMANTICS-LOOKUP-UNITS is
+including EXP-SEMANTICS-LOOKUP .
+including UNITS-FOR-C .
+including UNITS-STATE .
+including EXP-UNITS-BASIC .
+
+var X : Identifier . var K : Computation . var U : Unit .
+vars L L' : Location . var DSL : DeclarationSpecifierList .
+var D : Declarator . var Env : Env . var Q : Qid .
+var EI : EnvItem .
+
+***
+*** Name lookup: return the unit assigned to the name. Make
+*** sure this isn't the name of a function -- if it is, it is
+*** non-local and won't be in the environment.
+***
+ceq k(lookup(X) -> K) env(Env [X,L,u(U),EI]) =
+k(val(lvp(L,u(U))) -> K) env(Env [X,L,u(U),EI])
+if isFunIdent(X) == false .
+
+***
+*** Lookup for initValue (special case)
+***
+ceq k(lookup(X) -> K) env(Env [X,L,initValue(L'),EI]) =
+k(val(lvp(L,initValue(L'))) -> K) env(Env [X,L,initValue(L'),EI])
+if isFunIdent(X) == false .
+
+***
+*** Special handling for function names.
+***
+ceq k(lookup(X) -> K) = k(val(fhandle) -> K) if isFunIdent(X) .
+
+***
+*** Location lookup: return the unit assigned to the
+*** location
+***
+eq k(llookup(L) -> K) env(Env [X,L,u(U),EI]) =
+k(val(lvp(L,u(U))) -> K) env(Env [X,L,u(U),EI]) .
+
+***
+*** Lookup enum tag -- these are just ints, and are treated
+*** as having a constant unit.
+***
+eq k(lookup(e#(Q)) -> K) = k(val(u($cons)) -> K) .
+endfm
+
+***
+*** Allocation operations for units.
+***
+*** USES POLICY HOOK: defaultVal
+*** USES POLICY HOOK: defaultEnumVal
+*** USES POLICY HOOK: defaultFunVal
+***
+fmod EXP-SEMANTICS-ALLOC-UNITS is
+including EXP-SEMANTICS-ALLOCATION .
+including EXP-SEMANTICS-ALLOC-PTR .
+including EXP-SEMANTICS-ALLOC-ARRAY .
+including EXP-SEMANTICS-ALLOC-STRUCT .
+including EXP-SEMANTICS-ALLOC-UNION .
+including EXP-SEMANTICS-ALLOC-SCALAR .
+including EXP-SEMANTICS-ALLOC-ENUM .
+including EXP-SEMANTICS-ALLOC-FUN .
+including EXP-UNITS-BASIC .
+including TYPE-ANNOTATION-HELPERS .
+
+var K : Computation . var N : Nat .
+var DSL : DeclarationSpecifierList . var D : Declarator .
+var U : Unit .
+
+***
+*** Default scalar values. If we have a type annotation, use that
+*** to set the unit, instead of just allocating a fresh unit.
+***
+*** TODO: Should we allow similar type annotations on enums? Probably
+*** not, but something to think about.
+***
+ceq k(defaultVal(DSL,D) -> K) c(N) =
+k(val(u(U))         -> K) c(N)
+if DSLContainsTAnn(DSL) /\ @cpf(U) := getDSLTAnn(DSL) .
+
+eq k(defaultVal(DSL,D) -> K) c(N   ) =
+k(val(u(NUnit(N)))  -> K) c(s(N)) [owise] .
+
+***
+*** Enums are treated like constants, so they are given a constant
+*** unit by default.
+***
+eq k(defaultEnumVal(DSL,D) -> K) c(N) = k(val(u($cons)) -> K) c(N) .
+
+***
+*** Functions are just thunks -- just pass around a generic "handle"
+*** with no information, since we don't care which function is it.
+*** Functions do not have an associated unit.
+***
+eq k(defaultFunVal(DSL,D) -> K) c(N) = k(val(fhandle) -> K) c(N) .
+endfm
+
+***
+*** Pointer dereferencing/address capture
+***
+fmod EXP-SEMANTICS-PTR-UNITS is
+including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+including LOCK-HELPERS .
+including EXP-SEMANTICS-ALLOC-UNITS .
+
+vars L L' : Location . var K : Computation . var V : Value .
+var DSL : DeclarationSpecifierList . var D : Declarator .
+var X : Identifier . var Env : Env . var EI : EnvItem .
+
+***
+*** Base case of pointer dereference; here, L' is an actual location. We also
+*** handle the case where the pointer isn't from an already-allocated location,
+*** which can occur when we dereference something resulting from another
+*** expression, like *(&x) or *(p+1). Notice in that case we cannot trigger
+*** an allocation, since that only happens in dereferencing through a structure
+*** or union field, so we don't need to check for it.
+***
+ceq k(val(lvp(L,ptr(L'))) -> *addr -> K) = k(llookup(L') -> K) if L' =/= triggerAlloc .
+eq k(val(ptr(L)) -> *addr -> K) = k(llookup(L) -> K) .
+
+***
+*** Pointer dereference can trigger an allocation; if this happens,
+*** use the standard allocation functionality to allocate the pointer.
+*** Then, just look up L again; this time it should point to a valid location.
+***
+*** TODO: Add locking/finalization code
+***
+eq k(val(lvp(L,ptr(triggerAlloc))) -> *addr -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+k(allocPtr(DSL,D) -> storeValIn(L) -> llookup(L) -> *addr -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) .
+
+***
+*** Special case -- if we take the address of a function handle, we just get
+*** another function handle. This takes care of the two typical ways to refer
+*** to a function when taking its address -- either p = f or p = &f.
+***
+eq k(val(fhandle) -> &addr -> K) = k(val(fhandle) -> K) .
+
+***
+*** Address-of operator handling. If we try to take the address
+*** of something that doesn't have one (like &5), we will get stuck,
+*** which is appropriate. Otherwise, we get a pointer. Lock the
+*** value once the address is taken; this way, aliasing problems
+*** don't invalidate the analysis. Note that this locks everything
+*** reachable through the location as well -- taking the address of a
+*** structure will lock all the structure fields and everything they can
+*** reach, for instance.
+***
+eq k(val(lvp(L,V)) -> &addr -> K) = k(lockValsThrough(L) -> val(ptr(L)) -> K) .
+
+endfm
+
+***
+*** Array lookup, including where the array is treated like a pointer.
+***
+fmod EXP-SEMANTICS-ARRAY-UNITS is
+including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+including HELPERS .
+including EXP-SEMANTICS-ALLOC-UNITS .
+
+vars L L' : Location . var K : Computation .
+var V : Value .
+
+***
+*** Array access; V is the index, although since we just assume all elements
+*** of the array have the same unit (and change units at the same time)
+*** it can be disregarded.
+***
+ceq k(val(lvp(L,arr(L')), V) -> arr -> K) = k(llookup(L') -> K) if L' =/= noloc .
+
+***
+*** If we are treating the array like a pointer, just switch it over to array-handling
+*** logic -- *p, where p is an array, is the same as p[0]
+***
+eq k(val(lvp(L,arr(L'))) -> *addr -> K) = k(val(lvp(L,arr(L'))) -> arr -> K) .
+endfm
+
+***
+*** Unit-specific structure and union logic.
+***
+*** TODO: Abstract out -- logic seems generic.
+***
+fmod EXP-SEMANTICS-STRUCT-UNION-UNITS is
+including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+including HELPERS .
+including EXP-SEMANTICS-ALLOC-UNITS .
+
+vars L L' : Location . var K : Computation . var V : Value .
+vars X X' : Identifier . var Env : Env . var SFS : SFieldSet .
+var DSL : DeclarationSpecifierList . var D : Declarator .
+var EI : EnvItem .
+
+***
+*** Handle structure and union field access using dot notation (s.x) .
+***
+eq k(val(lvp(L,struct(X', (sfield(X,L') SFS)))) -> str1(X) -> K) =
+k(llookup(L') ->                                           K) .
+
+eq k(val(lvp(L,union(X', (sfield(X,L') SFS)))) -> str1(X) ->  K) =
+k(llookup(L') ->                                           K) .
+
+***
+*** Handle structure and union field access using pointers (p->x) .
+*** If we hit an unallocated pointer, allocate it before we follow
+*** it.
+***
+ceq k(val(lvp(L,ptr(L'))) -> str2(X) -> K) =
+k(llookup(L') -> str2(X) ->         K)
+if L' =/= triggerAlloc .
+
+***
+*** TODO: May need to check to see if we need to lock/finalize this.
+***
+eq k(val(lvp(L,ptr(triggerAlloc))) -> str2(X') ->                  K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+k(allocPtr(DSL,D) -> storeValIn(L) -> llookup(L) -> str2(X') -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) .
+
+eq k(val(lvp(L',struct(X',(sfield(X,L) SFS)))) -> str2(X) -> K) =
+k(llookup(L) ->                                           K) .
+
+eq k(val(lvp(L',union(X',(sfield(X,L) SFS)))) -> str2(X) -> K) =
+k(llookup(L) ->                                          K) .
+endfm
+
+***
+*** Provide unit semantics for all other C expressions.
+***
+*** NOTE: We currently assume a type-safe subset of C. This means
+*** we don't try to "guess" the unit of things like *p = *(p+20) + &x.
+***
+fmod EXP-SEMANTICS-UNITS is
+including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+including EXP-SEMANTICS-ALLOC-UNITS .
+including UNITS-FOR-C .
+including STMT-SYNTAX .
+including UNITS-STATE .
+including HELPERS .
+including POLICY-SYNTAX .
+including EXP-SEMANTICS-ASSIGN-LOCK .
+including EXP-SEMANTICS-ASSIGN-FINAL .
+including EXP-SEMANTICS-ASSIGN-UNKNOWN .
+
+vars E E' E'' : Exp . var K : Computation .
+var TN : TypeName . vars X X' X'' : Identifier .
+var Es Es' : ExpList .
+var S : String . var O : Output .
+vars I I' : Int . vars U U' U'' : Unit .
+vars V V' V'' : Value . vars L L' : Location .
+vars Vl Vl' : ValueList . vars N N' : Nat .
+vars Env Env' : Env . var C : Constant .
+var DSL : DeclarationSpecifierList . vars D D' : Declarator .
+var SM : StructMapSet . var SQL : DeclarationSpecifierList .
+var SFS : SFieldSet .
+
+***
+*** Check for failure in a value, issuing a warning if failure occurs.
+***
+op checkForFail : String -> ComputationItem .
+eq k(val(u($fail)) -> checkForFail(S) -> K) env(Env) =
+k(issueWarning(1, ("Unit violation detected in " + S + " operation, incompatible units."), Env) -> val(u($fail)) -> K) env(Env) .
+eq k(val(V) -> checkForFail(S) -> K) env(Env) = k(val(V) -> K) env(Env) [owise] .
+
+***
+*** Basic expressions -- identifiers, constants, etc
+***
+eq exp(X) = lookup(X) .
+eq exp(C) = val(u($cons)) .
+
+***
+*** Self increment/decrement just maintains the same units. We also strip off the
+*** location, since you cannot say something like (x++)++ in C (x++ does NOT
+*** yield an lvalue).
+***
+ceq k(val(V) -> post++ -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) .
+ceq k(val(V) -> post-- -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) .
+ceq k(val(V) -> pre++ -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) .
+ceq k(val(V) -> pre-- -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) .
+
+***
+*** For pointers, give a warning -- if we have *p = meter, it may not after p++.
+*** TODO: We need to see how common this case is -- it seems like it would be
+*** most common in cases where we have a pointer into an array.
+***
+eq k(val(lvp(L,ptr(L'))) -> post++ -> K) =
+k(issueWarning(2,"Warning: Use of pointer arithmetic in post-increment may invalidate analysis") -> val(ptr(L')) -> K) .
+eq k(val(lvp(L,ptr(L'))) -> post-- -> K) =
+k(issueWarning(2,"Warning: Use of pointer arithmetic in post-decrement may invalidate analysis") -> val(ptr(L')) -> K) .
+eq k(val(lvp(L,ptr(L'))) -> pre++ -> K) =
+k(issueWarning(2,"Warning: Use of pointer arithmetic in pre-increment may invalidate analysis") -> val(ptr(L')) -> K) .
+eq k(val(lvp(L,ptr(L'))) -> pre-- -> K) =
+k(issueWarning(2,"Warning: Use of pointer arithmetic in pre-decrement may invalidate analysis") -> val(ptr(L')) -> K) .
+
+***
+*** Maintaining/negating sign maintains the same units
+*** TODO: Should add ptr arith cases.
+***
+ceq k(val(V) -> un+ -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) .
+ceq k(val(V) -> un- -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) .
+
+***
+*** Multiplication/division/mod operations combine the units of both operands
+*** TODO: Should add ptr arith cases.
+***
+ceq k(val(V,V') -> * -> K) = k(val(u(U U')) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> / -> K) = k(val(u(U (U' ^ -1))) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> & -> K) = k(val(u(U (U' ^ -1))) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+
+***
+*** Addition and subtraction require compatible units for both operands, and will
+*** return the compatible unit as the result
+***
+ceq k(val(V,V') -> + -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("addition") -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> - -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("subtraction") -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+
+eq k(val(lvp(L,ptr(L')), V) -> + -> K) =
+k(issueWarning(2,"Warning: Use of pointer arithmetic in addition operation may invalidate analysis") -> val(ptr(L')) -> K) .
+eq k(val(lvp(L,ptr(L')), V) -> - -> K) =
+k(issueWarning(2,"Warning: Use of pointer arithmetic in subtraction operation may invalidate analysis") -> val(ptr(L')) -> K) .
+
+***
+*** Comparisons work like addition, but also return a unitless result (so we discard the merged unit)
+***
+ceq k(val(V,V') -> < -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("less than") -> discard -> val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> > -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("greater than") -> discard -> val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> <= -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("less than or equal to") -> discard -> val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> >= -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("greater than or equal to") -> discard -> val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> c== -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("equal") -> discard -> val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+ceq k(val(V,V') -> != -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("not equal") -> discard -> val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') .
+
+***
+*** Assignment; the value being assigned changes the existing value at that location.
+*** This means that, in cases where V' is a unit, it will replace the existing unit V.
+*** Other cases -- i.e., pointer assignment, don't deal directly with units. Note that
+*** the actual logic to do the assignment is part of the definition of assign, and will
+*** handle any exceptions (for locked values, for instance).
+***
+*** Note that here the left-hand operand must be of the form lvp(L,V), since it is an
+*** lvalue and thus must have a location.
+***
+ceq k(val(lvp(L,V),V') -> = -> K) = k(val(V'') -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K) if V'' := strip(V') .
+
+***
+*** For combo assign/operations, need to update unit and follow unit math rules
+***
+ceq k(val(lvp(L,u(U)),V') -> += -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("+=") -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') .
+ceq k(val(lvp(L,u(U)),V') -> -= -> K) = k(val(u(mergeUnits(U,U'))) -> checkForFail("-=") -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') .
+ceq k(val(lvp(L,u(U)),V') -> *= -> K) = k(val(u(U U')) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') .
+ceq k(val(lvp(L,u(U)),V') -> /= -> K) = k(val(u(U (U' ^ -1))) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') .
+ceq k(val(lvp(L,u(U)),V') -> %= -> K) = k(val(u(U (U' ^ -1))) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') .
+
+***
+*** Bit shifts maintain units, since they can be used for multiplies and divides,
+*** but other bitwise operations return $noUnit. Also, the first (except for shift)
+*** and second operands should be const or $noUnit -- it doesn't make sense to shift
+*** something 3 kg and bitwise or 5 ft.
+***
+ceq k(val(V,V') -> >> -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ (U' == $cons or U' == $noUnit) .
+ceq k(val(V,V') -> >> -> K) = k(issueWarning(1,"Unit violation: >> operation, second operand not constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ not(U' == $cons or U' == $noUnit) .
+
+ceq k(val(V,V') -> << -> K) = k(val(u(U)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ (U' == $cons or U' == $noUnit) .
+ceq k(val(V,V') -> << -> K) = k(issueWarning(1,"Unit violation: << operation, second operand not constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ not(U' == $cons or U' == $noUnit) .
+
+ceq k(val(V,V') -> & -> K) = k(val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(V,V') -> & -> K) = k(issueWarning(1,"Unit violation: operands for & must be constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+ceq k(val(V,V') -> ^ -> K) = k(val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(V,V') -> ^ -> K) = k(issueWarning(1,"Unit violation: operands for ^ must be constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+ceq k(val(V,V') -> | -> K) = k(val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(V,V') -> | -> K) = k(issueWarning(1,"Unit violation: operands for | must be constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+***
+*** Logical operations should also just take constant or unitless values -- again,
+*** something like (5 feet && 3 meters) doesn't make sense, even though (5 && 3) is true
+*** in C.
+***
+ceq k(val(V,V') -> && -> K) = k(val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(V,V') -> && -> K) = k(issueWarning(1,"Unit violation: operands for && must be constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+ceq k(val(V,V') -> || -> K) = k(val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(V,V') -> || -> K) = k(issueWarning(1,"Unit violation: operands for || must be constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+ceq k(val(V) -> ! -> K) = k(val(u($noUnit)) -> K)
+if u(U) := strip(V) /\ (U == $noUnit or U == $cons) .
+ceq k(val(V) -> ! -> K) = k(issueWarning(1,"Unit violation: operand for ! must be constant or unitless") -> val(u($fail)) -> K)
+if u(U) := strip(V) /\ not( U == $noUnit or U == $cons ) .
+
+***
+*** Bitwise ops with assignment. These work the same as bitwise ops, but also contain logic to properly
+*** assign the result.
+***
+ceq k(val(lvp(L,u(U)),V') -> >>= -> K) = k(val(u(U)) -> K)
+if u(U') := strip(V') /\ (U' == $cons or U' == $noUnit) .
+ceq k(val(lvp(L,u(U)),V') -> >>= -> K) =
+k(issueWarning(1,"Unit violation: >>= operation, second operand not constant or unitless") -> val(u($fail)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ not(U' == $cons or U' == $noUnit) .
+
+ceq k(val(lvp(L,u(U)),V') -> <<= -> K) = k(val(u(U)) -> K)
+if u(U') := strip(V') /\ (U' == $cons or U' == $noUnit) .
+ceq k(val(lvp(L,u(U)),V') -> <<= -> K) =
+k(issueWarning(1,"Unit violation: <<= operation, second operand not constant or unitless") -> val(u($fail)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ not(U' == $cons or U' == $noUnit) .
+
+ceq k(val(lvp(L,u(U)),V') -> &= -> K) = k(val(u($noUnit)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(lvp(L,u(U)),V') -> &= -> K) =
+k(issueWarning(1,"Unit violation: operands for &= must be constant or unitless") -> val(u($fail)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+ceq k(val(lvp(L,u(U)),V') -> ^= -> K) = k(val(u($noUnit)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(lvp(L,u(U)),V') -> ^= -> K) =
+k(issueWarning(1,"Unit violation: operands for ^= must be constant or unitless") -> val(u($fail)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+ceq k(val(lvp(L,u(U)),V') -> |= -> K) = k(val(u($noUnit)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ (( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+ceq k(val(lvp(L,u(U)),V') -> |= -> K) =
+k(issueWarning(1,"Unit violation: operands for |= must be constant or unitless") -> val(u($fail)) -> assignKeep(L,failOnLock failOnFinal checkForUnknown) -> K)
+if u(U') := strip(V') /\ not(( U == $noUnit or U == $cons ) and ( U' == $noUnit or U' == $cons)) .
+
+***
+*** The sizeof operation just generates a cons unit, since it yields a constant value
+***
+eq k(sof(TN) -> K) = k(val(u($cons)) -> K) .
+
+endfm
+
+***
+*** Define basic language for manipulating logical
+*** formulas in assertions and assumptions. Equality here
+*** is treated as assertion equality; assumption equality
+*** is assignment, and is handled elsewhere.
+***
+fmod UNIT-EVAL is
+protecting STMT-SYNTAX .
+protecting UNIT-EXP .
+including UNITS-FOR-C .
+including EXP-SEMANTICS-UNITS .
+
+vars UE UE' : UnitExp . vars Q Q' : Qid . vars V V' : Value .
+var K : Computation . vars B B' : Bool . var EI : EnvItem .
+var E : Exp . vars U U' U2 U3 : Unit . var Rt : Rat . vars L L' L'' L2 L3 : Location .
+var BU : BaseUnit . var TV : TypeVar . vars Env Env' : Env . var X : Identifier .
+
+***
+*** Use when the actual unit of a unit expression (@unit(E))
+*** needs to be calculated.
+***
+op findActualUnits : Unit -> ComputationItem .
+op findActualUnits : Rat Unit -> ComputationItem .
+op findActualUnits : -> ComputationItem .
+op findActualUnits : Rat -> ComputationItem .
+op actualUnit : Unit -> ComputationItem .
+
+op unitHolder : Location -> BaseUnit .
+
+***
+*** One unit
+***
+eq k(findActualUnits(@unit(E)) -> K) =
+k(exp(E) -> findActualUnits -> K) .
+eq k(findActualUnits(@unit(E) ^ Rt) -> K) =
+k(exp(E) -> findActualUnits(Rt) -> K) .
+eq k(val(lvp(L,u(U))) -> findActualUnits -> K) =
+k(actualUnit(U) -> K) .
+eq k(val(lvp(L,u(U))) -> findActualUnits(Rt) -> K) =
+k(actualUnit(U ^ Rt) -> K) .
+eq k(val(u(U)) -> findActualUnits -> K) =
+k(actualUnit(U) -> K) .
+eq k(val(u(U)) -> findActualUnits(Rt) -> K) =
+k(actualUnit(U ^ Rt) -> K) .
+
+***
+*** Composite unit; use the above logic to compute
+***
+eq k(findActualUnits(@unit(E) U) -> K) =
+k(exp(E) -> findActualUnits(U) -> K) .
+eq k(findActualUnits((@unit(E) ^ Rt) U) -> K) =
+k(exp(E) -> findActualUnits(Rt,U) -> K) .
+eq k(val(lvp(L,u(U))) -> findActualUnits(U') -> K) =
+k(findActualUnits(U U') -> K) .
+eq k(val(lvp(L,u(U))) -> findActualUnits(Rt,U') -> K) =
+k(findActualUnits((U ^ Rt) U') -> K) .
+
+***
+*** Unit with type variable, composite or single unit. This uses logic similar to that
+*** above. If the unit hasn't been defined yet, we will get back initValue, so we need
+*** to handle that case here. If we get back a normal unit, the above rules will be
+*** used. If the type variable is not in the environment, this means that the type variable
+*** is defined locally, and we want to leave it to be polymorphic, so we treat it as a
+*** unit in and of itself -- the "corner case" will handle that.
+***
+ceq k(findActualUnits(TV) -> K) env(Env) = k(exp(tvar(TV)) -> findActualUnits -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) .
+
+ceq k(findActualUnits(TV ^ Rt) -> K) env(Env) = k(exp(tvar(TV)) -> findActualUnits(Rt) -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) .
+
+ceq k(findActualUnits(TV U) -> K) env(Env) = k(exp(tvar(TV)) -> findActualUnits(U) -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) .
+
+ceq k(findActualUnits((TV ^ Rt) U) -> K) env(Env) = k(exp(tvar(TV)) -> findActualUnits(Rt,U) -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) .
+
+eq k(val(lvp(L,initValue(L'))) -> findActualUnits -> K) = k(actualUnit(unitHolder(L)) -> K) .
+
+eq k(val(lvp(L,initValue(L'))) -> findActualUnits(Rt) -> K) = k(actualUnit(unitHolder(L) ^ Rt) -> K) .
+
+eq k(val(lvp(L,initValue(L'))) -> findActualUnits(U) -> K) = k(findActualUnits(unitHolder(L) U) -> K) .
+
+eq k(val(lvp(L,initValue(L'))) -> findActualUnits(Rt,U) -> K) = k(findActualUnits(unitHolder(L) ^ Rt, U) -> K) .
+
+op tvToBU : TypeVar -> BaseUnit .
+
+ceq k(findActualUnits(TV) -> K) env(Env) = k(findActualUnits(tvToBU(TV)) -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) == false .
+
+ceq k(findActualUnits(TV ^ Rt) -> K) env(Env) = k(findActualUnits(tvToBU(TV) ^ Rt) -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) == false .
+
+ceq k(findActualUnits(TV U) -> K) env(Env) = k(findActualUnits(tvToBU(TV) U) -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) == false .
+
+ceq k(findActualUnits((TV ^ Rt) U) -> K) env(Env) = k(findActualUnits((tvToBU(TV) ^ Rt) U) -> K) env(Env)
+if isNameInEnv(tvar(TV),Env) == false .
+
+***
+*** Corner case (units are given explicitly, like m or lb)
+***
+eq k(findActualUnits(BU) -> K) = k(actualUnit(BU) -> K) [owise] .
+
+***
+*** Find actual units for an entire unit expression. We need to handle each
+*** case, i.e. and, or, not, etc.
+***
+op findActualUnitsExp : UnitExp -> ComputationItem .
+op actualUnitsExp : UnitExp -> ComputationItem .
+ops findForAndL findForAndR findForOrL findForOrR : UnitExp -> ComputationItem .
+ops findForImpL findForImpR : UnitExp -> ComputationItem .
+ops findForEqL findForEqR : Unit -> ComputationItem .
+op findForNot : -> ComputationItem .
+
+eq k(findActualUnitsExp(UE and UE') -> K) =
+k(findActualUnitsExp(UE) -> findForAndL(UE') -> K) .
+eq k(actualUnitsExp(UE) -> findForAndL(UE') -> K) =
+k(findActualUnitsExp(UE') -> findForAndR(UE) -> K) .
+eq k(actualUnitsExp(UE') -> findForAndR(UE) -> K) =
+k(actualUnitsExp(UE and UE') -> K) .
+
+eq k(findActualUnitsExp(UE or UE') -> K) =
+k(findActualUnitsExp(UE) -> findForOrL(UE') -> K) .
+eq k(actualUnitsExp(UE) -> findForOrL(UE') -> K) =
+k(findActualUnitsExp(UE') -> findForOrR(UE) -> K) .
+eq k(actualUnitsExp(UE') -> findForOrR(UE) -> K) =
+k(actualUnitsExp(UE or UE') -> K) .
+
+eq k(findActualUnitsExp(UE implies UE') -> K) =
+k(findActualUnitsExp(UE) -> findForImpL(UE') -> K) .
+eq k(actualUnitsExp(UE) -> findForImpL(UE') -> K) =
+k(findActualUnitsExp(UE') -> findForImpR(UE) -> K) .
+eq k(actualUnitsExp(UE') -> findForImpR(UE) -> K) =
+k(actualUnitsExp(UE implies UE') -> K) .
+
+eq k(findActualUnitsExp(U = UE) -> K) =
+k(findActualUnitsExp(trans(U = UE)) -> K) .
+eq k(findActualUnitsExp(U = U') -> K) =
+k(findActualUnits(U) -> findForEqL(U') -> K) .
+eq k(actualUnit(U) -> findForEqL(U') -> K) =
+k(findActualUnits(U') -> findForEqR(U) -> K) .
+eq k(actualUnit(U') -> findForEqR(U) -> K) =
+k(actualUnitsExp(U = U') -> K) .
+
+eq k(findActualUnitsExp(not UE) -> K) =
+k(findActualUnitsExp(UE) -> findForNot -> K) .
+eq k(actualUnitsExp(UE) -> findForNot -> K) =
+k(actualUnitsExp(not UE) -> K) .
+
+eq k(findActualUnitsExp(True) -> K) =
+k(actualUnitsExp(True) -> K) .
+eq k(findActualUnitsExp(False) -> K) =
+k(actualUnitsExp(False) -> K) .
+
+***
+*** Get the boolean value of a unit expression; this is
+*** performed after the above logic is used to get back
+*** the units assigned to expressions.
+***
+op checkExp : UnitExp Env -> Bool .
+
+ceq checkExp(UE and UE', Env) = B and B'
+if B := checkExp(UE,Env) /\ B' := checkExp(UE',Env) .
+ceq checkExp(UE or UE',Env) = B or B'
+if B := checkExp(UE,Env) /\ B' := checkExp(UE',Env) .
+eq checkExp(UE implies UE',Env) = checkExp( (not UE) or UE',Env ) .
+eq checkExp(not UE,Env) = not checkExp(UE,Env) .
+eq checkExp(U = U',Env) = compatible(instantiate(U,Env),instantiate(U',Env)) .
+eq checkExp(True,Env) = true .
+eq checkExp(False,Env) = false .
+eq checkExp(UE,Env) = false [owise] . *** be conservative if we miss a case
+
+op instantiate : Unit Env -> Unit .
+eq instantiate(unitHolder(L), Env [X,L,u(U),EI]) = U .
+eq instantiate(unitHolder(L) U', Env [X,L,u(U),EI]) = U instantiate(U',Env [X,L,u(U),EI]) .
+eq instantiate(tvToBU(U), Env) = U .
+eq instantiate(tvToBU(U) U', Env) = U instantiate(U',Env) .
+eq instantiate(U,Env) = U [owise] .
+endfm
+
+***
+*** Statement processing logic for units
+***
+fmod UNITS-STMT-SEMANTICS is
+including STMT-SEMANTICS .
+including UNITS-STATE .
+
+var E : Exp . var K : Computation . vars Q Q' : Qid .
+var Env : Env . vars ES ES' ES'' : EnvSet . var S : Stmt .
+var ST : State . vars IL IL' IL'' IC IC' IC'' LN LN' LN'' : Nat .
+
+op maxLn : Nat -> State .
+op maxC : Nat -> State .
+op maxLoc : Nat -> State .
+
+eq k(initS -> (S | noState || Env | ES || ES') -> K) currLn(IL) c(IC) nextLoc(LN) =
+k(stmt!(S,Env) -> (S | currLn(IL) c(IC) nextLoc(LN) maxLn(IL) maxC(IC) maxLoc(LN) || ES || ES') -> K) currLn(IL) c(IC) nextLoc(LN) .
+
+eq k(initS -> (S | noState || emptyES || ES') -> K) currLn(IL) c(IC) nextLoc(LN) =
+k(stmt!(S,noEnv) -> (S | currLn(IL) c(IC) nextLoc(LN) maxLn(IL) maxC(IC) maxLoc(LN) || emptyES || ES') -> K) currLn(IL) c(IC) nextLoc(LN) .
+
+ceq k(mergeS -> (S | currLn(IL) c(IC) nextLoc(LN) maxLn(IL') maxC(IC') maxLoc(LN') || Env | ES || ES') -> K) currLn(IL'') c(IC'') nextLoc(LN'') =
+k(stmt!(S,Env) -> (S | currLn(IL) c(IC) nextLoc(LN) maxLn(max(IL',IL'')) maxC(max(IC',IC'')) maxLoc(max(LN',LN'')) || ES || ES') -> K) currLn(IL) c(IC) nextLoc(LN)
+if envLocked(Env) == false .
+
+ceq k(mergeS -> (S | ST || Env | ES || ES') -> K) =
+k(mergeS -> (S | ST || ES || ES' | Env ) -> K)
+if envLocked(Env) == true .
+
+eq k(mergeS -> (S | currLn(IL) c(IC) nextLoc(LN) maxLn(IL') maxC(IC') maxLoc(LN') || emptyES || ES') -> K) currLn(IL'') c(IC'') nextLoc(LN'') =
+k(reform(ES') -> K) currLn(max(IL',IL'')) c(max(IC',IC'')) nextLoc(max(LN',LN'')) .
+endfm
+
+***
+*** Semantics for Unit assumptions. We currently support only one assumption,
+*** which assumes that a variable has a certain unit: @unit(x) = UNIT_EXP, which
+*** could be either a direct unit (meter second^2) or the unit of another var (@unit(y)).
+*** We can also and these. In the future, it would be good to support more involved
+*** expressions which could be useful, like (@unit(x) = meter || @unit(x) == feet) && @unit(y) = @unit(x)
+***
+fmod UNITS-ASSUME-SEMANTICS is
+including UNITS-STMT-SEMANTICS .
+including UNIT-EVAL .
+including LOCK-HELPERS .
+including FINAL-HELPERS .
+
+vars UE UE' : UnitExp . var BU BU' : BaseUnit .
+vars U U' : Unit . var K : Computation .
+vars L L' : Location . var Env : Env .
+vars E E' : Exp . var R : Rat .
+var D : Declarator . var DSL : DeclarationSpecifierList .
+vars V V' : Value . var X : Identifier .
+var EI : EnvItem . vars S S' : String .
+
+eq isSpecial(assume (UE and UE') ;) = true .
+eq isSpecial(assume (U = UE) ;) = true .
+eq isSpecial(iassume (UE and UE') ;) = true .
+eq isSpecial(iassume (U = UE) ;) = true .
+eq isSpecial(tassume(UE and UE',S,S')) = true .
+eq isSpecial(tassume(U = UE,S,S')) = true .
+
+***
+*** Break assumptions separated by logical "and" into multiple assumptions;
+*** cuts down on special cases. The trans operation ensures assignments
+*** happen in the correct order -- if we have @unit(a) = @unit(b) = @unit(c), we
+*** first want to assign the unit to c, then assign that to b, then assign
+*** that to a, like @unit(c) = <whatever>, @unit(b) = unit(c), @unit(a) = unit(b).
+*** If we say @unit(a) = @unit(b), @unit(b) = @unit(c), @unit(c) = <whatever>, a, b,
+*** and c may all get different units (since this is more like assignment than
+*** equality).
+***
+eq k(stmt(assume (UE and UE') ;) -> K) =
+k(stmt(assume(UE) ;) -> stmt(assume(UE') ;) -> K) .
+eq k(stmt(assume (U = UE) ;) -> K) =
+k(stmt(assume(trans(U = UE)) ;) -> K) .
+
+eq k(stmt(iassume (UE and UE') ;) -> K) =
+k(stmt(iassume(UE) ;) -> stmt(iassume(UE') ;) -> K) .
+eq k(stmt(iassume (U = UE) ;) -> K) =
+k(stmt(iassume(trans(U = UE)) ;) -> K) .
+
+eq k(stmt(tassume(UE and UE',S,S')) -> K) =
+k(stmt(tassume(UE,S,S')) -> stmt(tassume(UE,S,S')) -> K) .
+eq k(stmt(tassume(U = UE,S,S')) -> K) =
+k(stmt(tassume(trans(U = UE),S,S')) -> K) .
+
+***
+*** Process each assumption. For @unit(E), we must evaluate E to find
+*** the location where we will store the unit. This assumes that the left-hand
+*** side is an lvalue (@unit(5) = feet isn't allowed, for instance).
+***
+eq k(stmt!((assume True ;), Env) -> K) =
+k(captureEnv -> K) env(Env) .
+
+eq k(stmt!((iassume True ;), Env) -> K) =
+k(captureEnv -> K) env(Env) .
+
+eq k(stmt!(tassume(True,S,S'), Env) -> K) =
+k(captureEnv -> K) env(Env) .
+
+ceq k(stmt!((assume (BU = BU') ;), Env) -> K) =
+k(es(Env) -> K)
+if mergeUnits(BU,BU') =/= $fail .
+
+ceq k(stmt!((assume (BU = BU') ;), Env) -> K) =
+k(issueWarning(1, ("Unit violation detected: trying to assume two incompatible units are equal"), Env) -> es(Env) -> K)
+if mergeUnits(BU,BU') == $fail .
+
+ceq k(stmt!((iassume (BU = BU') ;), Env) -> K) =
+k(es(Env) -> K)
+if mergeUnits(BU,BU') =/= $fail .
+
+ceq k(stmt!((iassume (BU = BU') ;), Env) -> K) =
+k(issueWarning(1, ("Unit violation detected: trying to assume two incompatible units are equal"), Env) -> es(Env) -> K)
+if mergeUnits(BU,BU') == $fail .
+
+ceq k(stmt!((tassume(BU = BU',S,S')), Env) -> K) =
+k(es(Env) -> K)
+if mergeUnits(BU,BU') =/= $fail .
+
+ceq k(stmt!(tassume(BU = BU',S,S'), Env) -> K) =
+k(issueWarning(1, ("Unit violation detected: trying to assume two incompatible units are equal"), Env) -> es(Env) -> K)
+if mergeUnits(BU,BU') == $fail .
+
+eq k(stmt!((assume (@unit(E) = U) ;), Env) -> K) =
+k(findActualUnits(U) -> uassign(E) -> captureEnv -> K) env(Env) .
+eq k(stmt!((assume ((@unit(E) ^ R) = U) ;), Env) -> K) =
+k(findActualUnits(U ^ (1 / R)) -> uassign(E) -> captureEnv -> K) env(Env) .
+ceq k(actualUnit(U) -> uassign(E) -> K) =
+k(exp(E) -> uassign(U) -> K)
+if E =/= @result .
+ceq k(actualUnit(U) -> uassign(E) -> K) =
+k(K)
+if E == @result .
+
+eq k(stmt!((iassume (@unit(E) = U) ;), Env) -> K) =
+k(findActualUnits(U) -> uiassign(E) -> captureEnv -> K) env(Env) .
+eq k(stmt!((iassume ((@unit(E) ^ R) = U) ;), Env) -> K) =
+k(findActualUnits(U ^ (1 / R)) -> uiassign(E) -> captureEnv -> K) env(Env) .
+ceq k(actualUnit(U) -> uiassign(E) -> K) =
+k(exp(E) -> uiassign(U) -> K)
+if E =/= @result .
+ceq k(actualUnit(U) -> uiassign(E) -> K) =
+k(K)
+if E == @result .
+
+eq k(stmt!((tassume(@unit(E) = U,S,S')), Env) -> K) =
+k(findActualUnits(U) -> utassign(E) -> captureEnv -> K) env(Env) .
+eq k(stmt!((tassume((@unit(E) ^ R) = U,S,S')), Env) -> K) =
+k(findActualUnits(U ^ (1 / R)) -> utassign(E) -> captureEnv -> K) env(Env) .
+ceq k(actualUnit(U) -> utassign(E) -> K) =
+k(exp(E) -> utassign(U) -> K)
+if E =/= @result .
+ceq k(actualUnit(U) -> utassign(E) -> K) =
+k(K)
+if E == @result .
+
+***
+*** TODO: We may want to allow a statement like $U = meter in the future
+*** in an assumption; right now, we don't support this. Type annotations
+*** transformed into assume statements are of the form @unit(E) = $U, so
+*** this case doesn't come up with transformations.
+***
+
+***
+*** Once we have calculated the location of the @unit(E) expression and the
+*** unit to assign, do the assignment. These operators are used by other
+*** modules, depending on the policy (types-based, pre/post based, combo, etc).
+***
+op uassign : Exp -> ComputationItem .
+op uassign : Unit -> ComputationItem .
+op uiassign : Exp -> ComputationItem .
+op uiassign : Unit -> ComputationItem .
+op utassign : Exp -> ComputationItem .
+op utassign : Unit -> ComputationItem .
+
+***
+*** Convert these assignments into standard assignments.
+***
+eq k(val(lvp(L,V)) -> uassign(U) -> K) = k(val(u(U)) -> assign(L, warnOnLock warnOnFinal) -> K) .
+eq k(val(lvp(L,V)) -> uiassign(U) -> K) = k(val(u(U)) -> assign(L, overrideLock overrideFinal) -> K) .
+eq k(val(lvp(L,V)) -> utassign(U) -> K) = k(val(u(U)) -> assign(L, failOnLock failOnFinal) -> K) .
+
+***
+*** Handle arrays.
+***
+eq k(val(lvp(L,arr(L'))) -> uassign(U') -> K) = k(val(u(U')) -> findArrLoc(L') -> K) .
+eq k(val(lvp(L,arr(L'))) -> uiassign(U') -> K) = k(val(u(U')) -> findArrLocForLock(L') -> K) .
+
+***
+*** For arrays, keep traversing until we find the actual value stored in the array.
+*** Then, just switch to the above operators when we find the eventual unit in the
+*** array, which will perform the necessary checks.
+***
+op findArrLoc : Location -> ComputationItem .
+op findArrLocForLock : Location -> ComputationItem .
+
+eq k(val(V) -> findArrLoc(L) -> K) env(Env [X,L,arr(L'),EI]) =
+k(val(V) -> findArrLoc(L') -> K) env(Env [X,L,arr(L'),EI]) .
+
+ceq k(val(u(U)) -> findArrLoc(L) -> K) env(Env [X,L,V',dcl(D) EI]) =
+k(val(lvp(L,V')) -> uassign(U) -> K) env(Env [X,L,V',dcl(D) EI])
+if isArrayDeclarator(D) == false .
+
+eq k(val(V) -> findArrLocForLock(L) -> K) env(Env [X,L,arr(L'),EI]) =
+k(val(V) -> findArrLocForLock(L') -> K) env(Env [X,L,arr(L'),EI]) .
+
+ceq k(val(u(U)) -> findArrLocForLock(L) -> K) env(Env [X,L,V',dcl(D) EI]) =
+k(val(lvp(L,V')) -> uiassign(U) -> K) env(Env [X,L,V',dcl(D) EI])
+if isArrayDeclarator(D) == false .
+
+endfm
+
+fmod UNITS-ASSERT-SEMANTICS is
+including UNITS-STMT-SEMANTICS .
+including UNIT-EVAL .
+
+vars UE UE' : UnitExp . var BU BU' : BaseUnit .
+vars U U' : Unit . var K : Computation .
+vars L L' : Location . vars Env Env' : Env .
+vars E E' : Exp . var output : Output . var I : Int .
+var EI : EnvItem . var X : Identifier . vars S S' : String .
+var EL : ExpList .
+
+***
+*** Process each assertion. For @unit(E), we must evaluate E to find
+*** the location.
+***
+eq k(stmt!((assert UE ;), Env) -> K) =
+k(findActualUnitsExp(UE) -> checkResult("","") -> captureEnv -> K) env(Env) .
+eq k(stmt!(tassert(UE,S,S'), Env) -> K) =
+k(findActualUnitsExp(UE) -> checkResult(S,S') -> captureEnv -> K) env(Env) .
+eq k(stmt!((iassert UE ;), Env) -> K) origenv(Env') =
+k(findActualUnitsExp(UE) -> checkResult("","") -> recoverEnv(Env) -> removeCrrntEnv -> captureEnv -> K) env(Env') origenv(Env') crrntenv(Env) .
+
+op crrntenv : Env -> State [format (r! o)] .
+eq k(exp(@crrnt(E)) -> K) env(Env) crrntenv(Env') =
+k(exp(E) -> recoverEnv(Env) -> K) env(Env') crrntenv(Env') .
+
+***
+*** If we aren't processing an iassert, we should just discard @crrnt -- it's only needed on initial asserts,
+*** which are added for return statements, since these otherwise use the entry environment. Note that,
+*** if we make @crrnt default, we will need to do this instead for @old.
+***
+eq k(exp(@crrnt(E)) -> K) env(Env) = k(exp(E) -> K) env(Env) [owise] .
+
+op removeCrrntEnv : -> ComputationItem .
+eq k(removeCrrntEnv -> K) crrntenv(Env) = k(K) .
+
+op checkResult : String String -> ComputationItem .
+op checkResult2 : String String -> ComputationItem .
+
+eq k(actualUnitsExp(unitHolder(L) = U) -> checkResult(S,S') -> K) env(Env [X,L,initValue(L'),EI]) =
+k(K) env(Env [X,L,u(U),EI]) .
+eq k(actualUnitsExp(UE) -> checkResult(S,S') -> K) env(Env) =
+k(actualUnitsExp(UE) -> checkResult2(S,S') -> K) env(Env) [owise] .
+
+ceq k(actualUnitsExp(UE) -> checkResult2(S,S') -> K) env(Env) = k(K) env(Env) if checkExp(UE,Env) .
+ceq k(actualUnitsExp(UE) -> checkResult2(S,S') -> K) env(Env) = k(issueWarning(1,"Assert failed!",Env) -> K) env(Env) if not checkExp(UE,Env) .
+endfm
+
+*** Semantics of assignment for units. We need to handle pointers
+*** here, as well as a corner-case for structures and unions;
+*** the remaining semantics are policy-generic.
+***
+fmod EXP-SEMANTICS-ASSIGN-UNITS is
+including EXP-UNITS-BASIC .
+including LOCK-HELPERS .
+including FINAL-HELPERS .
+including EXP-SEMANTICS-ASSIGN-UNKNOWN .
+
+vars V V' V'' : Value . vars L L' : Location .
+vars K K' : Computation . var X : Identifier . var Env : Env .
+var DSL : DeclarationSpecifierList . var D : Declarator .
+var U : Unit . var EI : EnvItem . var B : Bool .
+var AFL : AssignFlagList . var AF : AssignFlag .
+
+***
+*** If we assign an array to a pointer, just convert it to a pointer too.
+*** So, for int a[5], and int *p, p = a is valid. Once this is complete,
+*** the standard assignment rules will kick in.
+***
+ceq k(assignPipeline(arr(L'),L,AFL,K') -> K) env(Env [X,L,V',EI dcl(D)]) =
+k(assignPipeline(ptr(L'),L,AFL,K') -> K) env(Env [X,L,V',EI dcl(D)])
+if isPointerDeclarator(D) .
+
+***
+*** If we assign a unit to a pointer, re-allocate the pointer. We
+*** don't know anything about it then (it could be a null assignment,
+*** or it could be some random memory address), since assigning a unit
+*** means we are assigning an integer, like p = 5 or p = x, where x = 5.
+***
+*** To do this, we can take advantage of the unknown value assignment
+*** logic, which also reallocates. Make sure to take any existing unknown
+*** check out first, since we don't want to allocate twice.
+***
+ceq k(assignPipeline(u(U),L,AFL,K') -> K) env(Env [X,L,V',EI dcl(D)]) =
+k(assignPipeline(unkv,L,(removeUnknownCheck(AFL) checkForUnknown),K') -> K) env(Env [X,L,V',EI dcl(D)])
+if isPointerDeclarator(D) .
+
+op removeUnknownCheck : AssignFlagList -> AssignFlagList .
+eq removeUnknownCheck(checkForUnknown AFL) = removeUnknownCheck(AFL) .
+eq removeUnknownCheck(emptyAF) = emptyAF .
+eq removeUnknownCheck(AF AFL) = removeUnknownCheck(AFL) [owise] .
+
+***
+*** Function pointers -- here we are assigning a function handle to
+*** a pointer. In this case, assign the fhandle value to the "cell"
+*** that this pointer points to. Most likely this cell will hold
+*** fhandle already anyway. In some odd cases, like in problematic
+*** casts, this may not be correct, but at that point the program
+*** is no longer type safe anyway. This won't result in a unit
+*** violation being missed, but could result in the program getting
+*** stuck.
+***
+*** TODO: We may want to check to see if the fhandles share compatible
+*** annotations.
+***
+ceq k(assignPipeline(fhandle,L, AFL,K') -> K) env(Env [X,L,ptr(L'),EI dcl(D)]) =
+k(assignPipeline(fhandle,L',AFL,K') -> K) env(Env [X,L,ptr(L'),EI dcl(D)])
+if isPointerDeclarator(D) .
+
+endfm
+
+*** Semantics of casting. We actually do need to do some sort of cast
+*** here, since the memory layout before and after could be different; for
+*** instance, if we cast a void* result from malloc to a structure pointer,
+*** the thing pointed to will be very different.
+***
+*** NOTE: For now, whenever we cast we just dicard the current value and use
+*** a fresh value. This is safe, but could lead to false positives, especially
+*** if we cast to similar structures or, for some reason, cast a value to
+*** something of the same type, which should be a no-op. The one exception
+*** is when we are casting to a scalar -- if the value is just a unit (i.e.,
+*** already a scalar) or a unit in an lvp, we just leave it be, since this
+*** happens quite often with implicit casts, from int to double for instance.
+***
+***
+*** TODO: See if we need to add support here for casts with type annotations,
+*** or if we can handle those elsewhere; for now, worry about them later
+***
+fmod EXP-SEMANTICS-CAST-UNITS is
+including EXP-UNITS-BASIC .
+including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+including HELPERS .
+including EXP-SEMANTICS-ALLOC-UNITS .
+
+vars V V' V'' : Value . vars L L' : Location .
+var K : Computation . var X : Identifier . var Env : Env .
+var DSL : DeclarationSpecifierList . var D : Declarator .
+var U : Unit . var TN : TypeName . var AD : AbstractDeclarator .
+
+***
+*** When we cast, we need to potentially allocate a new value, since the program will use the
+*** current value, post-cast, as an element of the new value. For instance, malloc returns a void *,
+*** which can then be cast to some other type. If we just leave it as void, we cannot use it for
+*** anything later.
+***
+*** NOTE: In the below, we treat tname as if it holds a DeclarationSpecifierList even though
+*** it is a SpecifierQualifierList. Since SQL is a subsort of DSL, this isn't a problem.
+***
+
+***
+*** struct case
+***
+ceq k(val(V) -> cast(tname(DSL)) -> K) = k(allocStruct(DSL,did(@unknown)) -> K)
+if isStructDSL(DSL) .
+
+***
+*** union case
+***
+ceq k(val(V) -> cast(tname(DSL)) -> K) = k(allocUnion(DSL,did(@unknown)) -> K)
+if isUnionDSL(DSL) .
+
+***
+*** Scalar case 1: not assigning a unit to a scalar, but something else; change
+*** this to the unknown value
+***
+ceq k(val(V) -> cast(tname(DSL)) -> K) = k(allocScalar(DSL,did(@unknown)) -> K)
+if isScalarUnit(V) == false /\ isStructDSL(DSL) == false /\ isUnionDSL(DSL) == false .
+
+***
+*** Scalar case 2: assigning a unit to a scalar; the type used in the case does not contain @cpf annotations
+***
+ceq k(val(V) -> cast(tname(DSL)) -> K) = k(val(V) -> K)
+if isScalarUnit(V) == true /\ isStructDSL(DSL) == false /\ isUnionDSL(DSL) == false /\ (DSLContainsTAnn(DSL) == false) .
+
+***
+*** Scalar case 3: assiging a unit to a scalar: the type used in the case does contain @cpf annotations,
+*** so "convert" the unit into a @cpf unit
+***
+ceq k(val(V) -> cast(tname(DSL)) -> K) = k(val(u(U)) -> K)
+if isScalarUnit(V) == true /\ isStructDSL(DSL) == false /\ isUnionDSL(DSL) == false /\ DSLContainsTAnn(DSL) /\ @cpf(U) := getDSLTAnn(DSL) .
+
+
+***
+*** The following are all casts with abstract declarators
+***
+
+***
+*** Pointer case
+***
+ceq k(val(V) -> cast(tname(DSL,AD)) -> K) = k(allocPtr(DSL,D) -> K)
+if D := makeConcrete(AD) /\ isPointerDeclarator(D) .
+
+***
+*** Array case
+***
+ceq k(val(V) -> cast(tname(DSL,AD)) -> K) = k(allocArray(DSL,D) -> K)
+if D := makeConcrete(AD) /\ isArrayDeclarator(D) .
+
+***
+*** struct case
+***
+ceq k(val(V) -> cast(tname(DSL,AD)) -> K) = k(allocStruct(DSL,did(@unknown)) -> K)
+if D := makeConcrete(AD) /\ isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isStructDSL(DSL) .
+
+***
+*** union case
+***
+ceq k(val(V) -> cast(tname(DSL,AD)) -> K) = k(allocUnion(DSL,did(@unknown)) -> K)
+if D := makeConcrete(AD) /\ isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isUnionDSL(DSL) .
+
+***
+*** Scalar case 1: not assigning a unit to a scalar, but something else; change
+*** this to the unknown value
+***
+ceq k(val(V) -> cast(tname(DSL,AD)) -> K) = k(allocScalar(DSL,did(@unknown)) -> K)
+if isScalarUnit(V) == false /\ D := makeConcrete(AD) /\ isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\
+isStructDSL(DSL) == false /\ isUnionDSL(DSL) == false .
+
+***
+*** Scalar case 2: assigning a unit to a scalar; the type used in the case does not contain @cpf annotations
+***
+ceq k(val(V) -> cast(tname(DSL,AD)) -> K) = k(val(V) -> K)
+if isScalarUnit(V) /\ D := makeConcrete(AD) /\ isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\
+isStructDSL(DSL) == false /\ isUnionDSL(DSL) == false /\ (DSLContainsTAnn(DSL) == false) .
+
+***
+*** Scalar case 3: assiging a unit to a scalar: the type used in the case does contain @cpf annotations,
+*** so "convert" the unit into a @cpf unit
+***
+ceq k(val(V) -> cast(tname(DSL,AD)) -> K) = k(val(u(U)) -> K)
+if isScalarUnit(V) /\ D := makeConcrete(AD) /\ isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\
+isStructDSL(DSL) == false /\ isUnionDSL(DSL) == false /\ DSLContainsTAnn(DSL) /\ @cpf(U) := getDSLTAnn(DSL) .
+
+op isScalarUnit : Value -> Bool .
+ceq isScalarUnit(V) = true if u(U) := strip(V) .
+eq isScalarUnit(V) = false [owise] .
+endfm
+
+***
+*** Units-specific declaration semantics.
+***
+fmod UNITS-DECL-SEMANTICS is
+including UNITS-STMT-SEMANTICS .
+including EXP-SEMANTICS-UNITS .
+including DECL-SEMANTICS-WLOCK .
+
+var Dec : Declaration . var K : Computation .
+vars X X' : Identifier . var N : Nat . var Env : Env .
+var DSL : DeclarationSpecifierList . var D : Declarator .
+var EI : EnvItem .
+
+***
+*** The implementation of falloc, adding final and vlock environment items
+***
+var L : Location . var V : Value . var Vl : ValueList .
+eq k(val(Vl) -> falloc(DSL,D,L) -> K) = k(falloc(DSL,D,L) -> val(Vl) -> K) .
+eq k(falloc(DSL,D,L) -> K) env(Env [X,L,V,EI]) = k(K) env(Env [X,L,V,EI vlock(false) final(DSLContainsTAnn(DSL))]) .
+endfm
+
+***
+*** Process @cpf type annotations.
+***
+fmod TYPE-ANNOTATION-UNITS is
+including UNITS-STMT-SEMANTICS .
+including UNITS-ASSUME-SEMANTICS .
+including UNITS-ASSERT-SEMANTICS .
+including TYPE-ANNOTATION-SYNTAX .
+including LOCK-HELPERS .
+including FINAL-HELPERS .
+
+var U : Unit . var E : Exp . var TV : TypeVar .
+var TVL : TypeVarList . var X : Identifier .
+var K : Computation . var Env : Env . var N : Nat .
+vars S S' : String .
+
+eq isDirective(#CPFTAssert(@cpf(U),E,S,S')) = true .
+eq isDirective(#CPFTAssume(@cpf(U),E,S,S')) = true .
+eq isDirective(#CPFTVarDecl(TVL)) = true .
+
+eq k(stmt(#CPFTAssert(@cpf(U),E,S,S')) -> K) = k(stmt(tassert(U = @unit(E), S, S')) -> K) .
+
+eq k(stmt(#CPFTAssume(@cpf(U),E,S,S')) -> K) = k(stmt(tassume(@unit(E) = U, S, S')) -> K) .
+
+eq k(stmt(#CPFTVarDecl(TV, TVL)) -> K) = k(stmt(allocInit(tvar(TV))) -> stmt(#CPFTVarDecl(TVL)) -> K) .
+eq k(stmt(#CPFTVarDecl(emptyTVL)) -> K) = k(K) .
+
+eq k(stmt!(allocInit(X), Env) -> K) nextLoc(N) =
+k(falloc(empty,emptyD,loc(N)) -> captureEnv -> K) env(Env [X,loc(N),initValue(loc(N)),dsl(empty) dcl(emptyD)]) nextLoc(s(N)) .
+endfm
+
+***
+*** Assignment rules for final values
+***
+fmod TANN-ASSIGN-RULES is
+including FINAL-HELPERS .
+including TYPE-ANNOTATION-UNITS .
+
+var V : Value . var Env : Env . vars U U' : Unit .
+var L : Location . var EI : EnvItem . var X : Identifier .
+
+eq assignAllowed(V,L,(Env [X,L,V,EI])) = true .
+eq assignAllowed(u($cons),L,(Env [X,L,u(U),EI])) = true .
+eq assignAllowed(u($any),L,(Env [X,L,u(U),EI])) = true .
+eq assignAllowed(u(U),L,(Env [X,L,u(U'),EI])) = false [owise] .
+
+eq assignValue(V,L,(Env [X,L,V,EI])) = V .
+eq assignValue(u($cons),L,(Env [X,L,u(U),EI])) = u(U) .
+eq assignValue(u($any),L,(Env [X,L,u(U),EI])) = u(U) .
+
+eq genFinalErrorMsg(u(U),L,(Env [X,L,u(U'),EI])) = "Unit being assigned does not match unit provided in annotation." .
+endfm
+
+***
+*** Unit policy rules for Havoc. These rules just "clear out" any
+*** policy specific information -- they don't need to reallocate
+*** storage, for instance. Since the only policy specific information
+*** is unit information, stored in scalars, this just means in practice
+*** that we need to clear out any units and assign fresh units.
+***
+*** Defines policy hook: clearLoc
+***
+fmod UNITS-HAVOC-SEMANTICS is
+including HAVOC-SEMANTICS .
+including EXP-SEMANTICS-ALLOC-SCALAR .
+
+var X : Identifier . var L : Location . var K : Computation .
+var DSL : DeclarationSpecifierList . var D : Declarator .
+var EI : EnvItem . var SFS : SFieldSet . var Env : Env .
+var V : Value . vars B B' : Bool .
+
+***
+*** NOTE: We only change the value IF it is a scalar and IF it is not final
+*** and IF it is not locked; otherwise, it does not change
+***
+ceq k(clearLoc(L) -> K) env(Env [X,L,V,EI dsl(DSL) dcl(D) final(B) vlock(B')])
+= k(defaultVal(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,EI dsl(DSL) dcl(D) final(B) vlock(B')])
+if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isScalarDSL(DSL) /\ B == false /\ B' == false .
+
+eq k(clearLoc(L) -> K) env(Env) = k(K) env(Env) [owise] .
+endfm
+
+fmod UNITS-INVARIANT-SEMANTICS is
+including UNITS-STMT-SEMANTICS .
+including UNITS-ASSERT-SEMANTICS .
+including UNIT-EVAL .
+including INVARIANT-SEMANTICS .
+
+vars UE UE' : UnitExp . var BU BU' : BaseUnit .
+vars U U' : Unit . var K : Computation .
+vars L L' : Location . vars Env Env' : Env .
+vars E E' : Exp . var output : Output . var I : Int .
+var EI : EnvItem . var X : Identifier . vars S S' : String .
+var EL : ExpList . vars ES ES' ES'' : EnvSet .
+vars N N' : Nat .
+
+***
+*** Process the invariant, which is checked similarly to an assert.
+***
+eq k(stmt!((#invariant UE ;), Env) -> K) = k(stmt!(checkInvariant(UE), Env) -> K) .
+
+eq k(stmt!(checkInvariant(UE), Env) -> K) =
+k(findActualUnitsExp(UE) -> checkInvResult("","") -> captureEnv -> K) env(Env) .
+
+op checkInvResult : String String -> ComputationItem .
+op checkInvResult2 : String String -> ComputationItem .
+
+eq k(actualUnitsExp(unitHolder(L) = U) -> checkInvResult(S,S') -> K) env(Env [X,L,initValue(L'),EI]) =
+k(K) env(Env [X,L,u(U),EI]) .
+
+eq k(actualUnitsExp(UE) -> checkInvResult(S,S') -> K) env(Env) =
+k(actualUnitsExp(UE) -> checkInvResult2(S,S') -> K) env(Env) [owise] .
+
+ceq k(actualUnitsExp(UE) -> checkInvResult2(S,S') -> K) env(Env) =
+k(K) env(Env) if checkExp(UE,Env) .
+ceq k(actualUnitsExp(UE) -> checkInvResult2(S,S') -> K) env(Env) =
+k(issueWarning(1,"Invariant failed to hold!",Env) -> K) env(Env) if not checkExp(UE,Env) .
+
+***
+*** If we don't need the invariant to keep from diverging, just ignore it, and
+*** the loop guard expression E. E cannot refer to units, so it doesn't make
+*** sense to factor !E into the policy.
+***
+eq k(finalizeInvariant(UE,E) -> K) = k(K) .
+
+***
+*** If we would otherwise diverge, we will use the unit expression UE to
+*** set some units to symbolic related values. For instance, if the invariant
+*** says something like @unit(x) ^ 3 = @unit(y), with no more information for
+*** y, then we will assign y a fresh unit (say U) and x U ^ 1/3. If doing
+*** these transformations in both the current and saved environment sets
+*** give us card(ES) = card(current ES), the invariant keeps the loop from
+*** diverging. Otherwise, the loop does diverge, and we need to issue an
+*** error message.
+***
+eq k(finalizeInvariantDiv(UE,E,ES) -> K) envs(ES') =
+k(checkWithUnitAssignments(UE,ES,ES') -> K) envs(ES') .
+
+op checkWithUnitAssignments : UnitExp EnvSet EnvSet -> ComputationItem .
+eq k(checkWithUnitAssignments(UE,ES,ES') -> K) =
+k(invInitAssignments(UE,ES,ES') -> invAssumes(UE,emptyES,emptyES) -> K) .
+
+op invInitAssignments : UnitExp EnvSet EnvSet -> ComputationItem .
+op invInitAssignments1 : UnitExp EnvSet Nat -> ComputationItem .
+op invInitAssignments2 : EnvSet -> ComputationItem .
+
+eq k(invInitAssignments(UE,ES,ES') -> K) envs(ES'') c(N) =
+k(stmt(getInitAssignments(UE)) -> invInitAssignments1(UE,ES',N) -> K) envs(ES) c(N) .
+eq k(invInitAssignments1(UE,ES',N) -> K) envs(ES) c(N') =
+k(stmt(getInitAssignments(UE)) -> invInitAssignments2(ES) -> K) envs(ES') c(N) .
+eq k(invInitAssignments2(ES) -> invAssumes(UE,emptyES,emptyES) -> K) envs(ES') =
+k(invAssumes(UE,ES,ES') -> K) envs(ES) .
+
+***
+*** In cases where we have assignments in invariants, like
+*** @unit(x) = @unit(y), return the "end" unit (here, @unit(y)), since
+*** we can then clear these and carry out the assignments. Don't
+*** return basic units, i.e., for @unit(x) = $m, don't return $m.
+***
+op getInitAssignments : UnitExp -> StmtList .
+eq getInitAssignments(UE and UE') = getInitAssignments(UE) getInitAssignments(UE') .
+eq getInitAssignments(U = UE) = getInitAssignments(UE) .
+eq getInitAssignments(U = @unit(E)) = ((E = #FreshUnit) ;) .
+eq getInitAssignments(UE) = empty [owise] .
+
+op #FreshUnit : -> Exp .
+eq k(exp(#FreshUnit) -> K) c(N) = k(val(u(NUnit(N))) -> K) c(s(N)) .
+
+
+***
+*** Execute each invariant expression as an assume, gathering all the
+*** generated environments. Do this in both the current env set and the
+*** check env set (captured after one loop iteration). If, at the end,
+*** the env sets are equal, defined as matching after unlocking all the
+*** envs locked on 'break (those locked on 'continue were unlocked already),
+*** the invariant stabilized the loop. If they are NOT equal, there must
+*** be something not covered by the invariant that is also changing. If so,
+*** issue a warning.
+***
+op invAssumes : UnitExp EnvSet EnvSet -> ComputationItem .
+op invAssumes1 : UnitExp EnvSet -> ComputationItem .
+op invAssumes2 : EnvSet -> ComputationItem .
+
+eq k(invAssumes(UE,ES,ES') -> K) envs(ES'') = k(stmt(assume UE ;) -> invAssumes1(UE,ES') -> K) envs(ES) .
+eq k(invAssumes1(UE,ES') -> K) envs(ES) = k(stmt(assume UE ;) -> invAssumes2(ES) -> K) envs(ES') .
+ceq k(invAssumes2(ES) -> K) envs(ES') = k(K) envs(ES')
+if envUnlock('break,ES) == envUnlock('break,ES') .
+ceq k(invAssumes2(ES) -> K) envs(ES') =
+k(issueWarning(1,"Invariant failed to stabilize loop, further analysis may be unsound.") -> K) envs(ES')
+if envUnlock('break,ES) =/= envUnlock('break,ES') .
+
+endfm
+
+fmod CHECK-UNITS is
+including STMT-SEMANTICS .
+including SIMPLE-STMT-SEMANTICS .
+including LINE-DIRECTIVE-SEMANTICS .
+including WARN-DIRECTIVE-SEMANTICS .
+including CHECKPOINT-DIRECTIVE-SEMANTICS .
+including SEQUENCE-SEMANTICS .
+including BLOCK-SEMANTICS .
+including RETURN-SEMANTICS .
+including GOTO-SEMANTICS .
+including COND-SEMANTICS .
+including SWITCH-SEMANTICS .
+including LOOP-SEMANTICS .
+including BREAK-SEMANTICS .
+including UNLOCK-SEMANTICS .
+
+including UNITS-POLICY-SYNTAX .
+including UNITS-STMT-SEMANTICS .
+including UNITS-ASSUME-SEMANTICS .
+including UNITS-ASSERT-SEMANTICS .
+including UNITS-DECL-SEMANTICS .
+including UNITS-LONG-FORM .
+including UNITS-ASSUME-SEMANTICS .
+including UNITS-HAVOC-SEMANTICS .
+including UNITS-INVARIANT-SEMANTICS .
+
+including EXP-SEMANTICS-LOOKUP-UNITS .
+including EXP-SEMANTICS-ALLOC-UNITS .
+including EXP-SEMANTICS-PTR-UNITS .
+including EXP-SEMANTICS-ARRAY-UNITS .
+including EXP-SEMANTICS-STRUCT-UNION-UNITS .
+including EXP-SEMANTICS-ASSIGN-UNITS .
+including EXP-SEMANTICS-CAST-UNITS .
+including TYPE-ANNOTATION-UNITS .
+including TANN-ASSIGN-RULES .
+
+including STRING .
+including CONVERSION .
+
+vars Sl SL : StmtList . var env : Env . vars I I' I'' : Int . var OS : OutputSet .
+var S : Stmt . vars UE UE' : UnitExp . var KS : State . var D : Declaration .
+var U : Unit . var ES : EnvSet . var DSL : DeclarationSpecifierList . var O : Output .
+var OL : OutputList . var WIS : WarningItemSet . var Str : String .
+
+op check : String StmtList DeclarationSpecifierList -> String .
+op check : String State -> String .
+
+op done : -> ComputationItem .
+eq check(Str,SL,DSL) = check(Str,k(stmt(SL) -> unlockAllEnvs -> replayGM -> done)
+envs(emptyES) origenv(noEnv) c(1) out(noOutput) currLn(0) nextLoc(1) truncated(false)
+gotoMap(emptyGM) structMap(structsToStructMap(DSL))) .
+eq check(Str, k(done) out(noOutput) envs(ES) KS) = ("Verified " + Str + ", environments created = " + string(card(ES),10)) .
+eq check(Str, k(done) out(OS) envs(ES)  KS) = ("Function " + Str + ": "), makeUnitMsg(sortByLine(setToList(dropExtras(OS)))), ("Environments created = " + string(card(ES),10))  [owise] .
+
+op makeUnitMsg : OutputList -> StringList .
+
+sort StringList .
+subsort String < StringList .
+op emptySL : -> StringList .
+op _,_ : StringList StringList -> StringList [assoc id: emptySL] .
+
+eq makeUnitMsg(warning(level(1) ln(I') msg(Str) WIS), OL) =
+("ERROR on line " + string(I',10) + "(" + string(1,10) + "): " + Str), makeUnitMsg(OL) .
+
+eq makeUnitMsg(warning(level(2) ln(I') msg(Str) WIS), OL) =
+("Warning on line " + string(I',10) + "(" + string(2,10) + "): " + Str), makeUnitMsg(OL) .
+
+eq makeUnitMsg(warning(level(3) ln(I') msg(Str) WIS), OL) =
+makeUnitMsg(OL) .
+
+eq makeUnitMsg(emptyOL) = emptySL [owise] .
+
+op dropExtras : OutputSet -> OutputSet .
+eq dropExtras(warning(level(I) ln(I') msg(Str) WIS) OS) = warning(level(I) ln(I') msg(Str)) dropExtras(OS) .
+eq dropExtras(noOutput) = noOutput .
+endfm

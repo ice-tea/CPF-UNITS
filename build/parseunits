@@ -1,0 +1,13 @@
+#!/bin/bash
+#./src $1
+./embed --default ALL $1
+mv $1.embed ./step1.c
+gcc -E -I. -o ./step2.c ./step1.c 
+./util/unit2cpf/unit2cpf < ./step2.c > step3.c
+./src step3.c
+#./cil/obj/x86_LINUX/cparser.byte.exe --noInsertImplicitCasts --noLowerConstants --printCilAsIs --dosimpbasic --pp_default_policy UNITS --out output.cil --policy UNITS ./step3.c 
+./cil/obj/x86_LINUX/cparser.asm.exe --noInsertImplicitCasts --noLowerConstants --printCilAsIs --docallgraph --doptranal --ptr_conservative --fg_use_aa --pp_default_policy UNITS --pp_use_aa --out preoutput.cil --policy UNITS ./new.C
+#./cil/obj/x86_LINUX/cparser.byte.exe --noInsertImplicitCasts --printCilAsIs --dosimpbasic --docallgraph --doptranal --ptr_conservative --pp_default_policy UNITS --pp_use_aa --out output.cil --policy UNITS ./step3.c 
+#./cil/obj/x86_LINUX/cparser.asm.exe --noInsertImplicitCasts --printCilAsIs --dosimpbasic --pp_default_policy UNITS --out preoutput.cil --policy UNITS ./step3.c 
+./util/stripcpf/stripcpf < ./preoutput.cil > ./output.cil
+./verify.pl output

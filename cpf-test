@@ -1,0 +1,13 @@
+#!/bin/bash
+cp $1 ./build/$1
+cd build
+
+myFile1="/util/unit2cpf/unit2cpf.o"
+if [ ! -f "$myFile1" ]; then
+echo "compiling unit2cpf"
+g++ ./util/unit2cpf/unit2cpf.C -o ./util/unit2cpf/unit2cpf
+fi
+
+./parseunits $1
+
+./maude.linux64 unit-policy.maude  < output.maude

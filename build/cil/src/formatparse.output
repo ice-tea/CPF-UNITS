@@ -1,0 +1,7231 @@
+   0  $accept : %entry% $end
+
+   1  initialize :
+
+   2  expression : ARG_e
+   3             | constant
+   4             | lval
+   5             | SIZEOF expression
+   6             | SIZEOF LPAREN typename RPAREN
+   7             | ALIGNOF expression
+   8             | ALIGNOF LPAREN typename RPAREN
+   9             | PLUS expression
+  10             | MINUS expression
+  11             | EXCLAM expression
+  12             | TILDE expression
+  13             | argu expression
+  14             | AND expression
+  15             | LPAREN expression RPAREN
+  16             | expression PLUS expression
+  17             | expression MINUS expression
+  18             | expression argb expression
+  19             | expression STAR expression
+  20             | expression SLASH expression
+  21             | expression PERCENT expression
+  22             | expression INF_INF expression
+  23             | expression SUP_SUP expression
+  24             | expression AND expression
+  25             | expression PIPE expression
+  26             | expression CIRC expression
+  27             | expression EQ_EQ expression
+  28             | expression EXCLAM_EQ expression
+  29             | expression INF expression
+  30             | expression SUP expression
+  31             | expression INF_EQ expression
+  32             | expression SUP_EQ expression
+  33             | LPAREN typename RPAREN expression
+
+  34  argu : ARG_u
+
+  35  argb : ARG_b
+
+  36  constant : ARG_d
+  37           | ARG_g
+  38           | CST_INT
+
+  39  lval : ARG_l
+  40       | argv offset
+  41       | STAR expression
+  42       | expression ARROW IDENT offset
+  43       | LPAREN STAR expression RPAREN offset
+
+  44  argv : ARG_v
+  45       | IDENT
+
+  46  offset : ARG_o
+  47         |
+  48         | DOT IDENT offset
+  49         | LBRACKET expression RBRACKET offset
+
+  50  typename : one_formal
+
+  51  one_formal : type_spec attributes decl
+  52             | ARG_f
+
+  53  type_spec : ARG_t
+  54            | VOID
+  55            | ARG_k
+  56            | CHAR
+  57            | UNSIGNED CHAR
+  58            | SHORT
+  59            | UNSIGNED SHORT
+  60            | INT
+  61            | UNSIGNED INT
+  62            | LONG
+  63            | UNSIGNED LONG
+  64            | LONG LONG
+  65            | UNSIGNED LONG LONG
+  66            | FLOAT
+  67            | DOUBLE
+  68            | STRUCT ARG_c
+  69            | UNION ARG_c
+  70            | TYPEOF LPAREN expression RPAREN
+
+  71  decl : STAR attributes decl
+  72       | direct_decl
+
+  73  direct_decl :
+  74              | IDENT
+  75              | LPAREN attributes decl RPAREN
+  76              | direct_decl LBRACKET exp_opt RBRACKET
+  77              | LPAREN attributes decl RPAREN LPAREN parameters RPAREN
+
+  78  parameters :
+  79             | parameters_ne
+
+  80  parameters_ne : ELLIPSIS
+  81                | ARG_va
+  82                | ARG_F
+  83                | one_formal
+  84                | one_formal COMMA parameters_ne
+
+  85  exp_opt :
+  86          | expression
+  87          | ARG_eo
+
+  88  attributes :
+  89             | ARG_A
+  90             | attribute attributes
+
+  91  attribute : CONST
+  92            | RESTRICT
+  93            | VOLATILE
+  94            | ATTRIBUTE LPAREN LPAREN attr RPAREN RPAREN
+
+  95  attr : IDENT
+  96       | IDENT LPAREN attr_args_ne RPAREN
+
+  97  attr_args_ne : attr_arg
+  98               | attr_arg COMMA attr_args_ne
+  99               | ARG_P
+
+ 100  attr_arg : IDENT
+ 101           | IDENT LPAREN attr_args_ne RPAREN
+ 102           | ARG_p
+
+ 103  prepost :
+ 104          | prepost_ne
+
+ 105  prepost_ne : prepost_cond
+ 106             | prepost_cond prepost_ne
+
+ 107  prepost_cond : PRECONDITION LPAREN IDENT RPAREN COLON CST_STRING SEMICOLON
+ 108               | PRECONDITION COLON CST_STRING SEMICOLON
+ 109               | POSTCONDITION LPAREN IDENT RPAREN COLON CST_STRING SEMICOLON
+ 110               | POSTCONDITION COLON CST_STRING SEMICOLON
+
+ 111  instr : ASSERT LPAREN IDENT COMMA CST_STRING RPAREN SEMICOLON
+ 112        | ASSUME LPAREN IDENT COMMA CST_STRING RPAREN SEMICOLON
+ 113        | ASSERT LPAREN CST_STRING RPAREN SEMICOLON
+ 114        | ASSUME LPAREN CST_STRING RPAREN SEMICOLON
+ 115        | ARG_i SEMICOLON
+ 116        | lval EQ expression SEMICOLON
+ 117        | lval PLUS_EQ expression SEMICOLON
+ 118        | lval MINUS_EQ expression SEMICOLON
+ 119        | lval STAR_EQ expression SEMICOLON
+ 120        | lval SLASH_EQ expression SEMICOLON
+ 121        | lval PERCENT_EQ expression SEMICOLON
+ 122        | lval AND_EQ expression SEMICOLON
+ 123        | lval PIPE_EQ expression SEMICOLON
+ 124        | lval CIRC_EQ expression SEMICOLON
+ 125        | lval INF_INF_EQ expression SEMICOLON
+ 126        | lval SUP_SUP_EQ expression SEMICOLON
+ 127        | lval EQ lval LPAREN arguments RPAREN SEMICOLON
+ 128        | lval LPAREN arguments RPAREN SEMICOLON
+ 129        | arglo lval LPAREN arguments RPAREN SEMICOLON
+
+ 130  arglo : ARG_lo
+
+ 131  arguments :
+ 132            | arguments_ne
+
+ 133  arguments_ne : expression
+ 134               | ARG_E
+ 135               | expression COMMA arguments_ne
+
+ 136  stmt : IF LPAREN expression RPAREN stmt
+ 137       | IF LPAREN expression RPAREN stmt ELSE stmt
+ 138       | RETURN exp_opt SEMICOLON
+ 139       | BREAK SEMICOLON
+ 140       | CONTINUE SEMICOLON
+ 141       | LBRACE stmt_list RBRACE
+ 142       | WHILE LPAREN expression RPAREN stmt
+ 143       | instr_list
+ 144       | ARG_s
+
+ 145  stmt_list :
+ 146            | ARG_S
+ 147            | stmt stmt_list
+ 148            | type_spec attributes decl maybe_init SEMICOLON stmt_list
+
+ 149  instr_list : instr
+ 150             | ARG_I
+ 151             | instr instr_list
+
+ 152  maybe_init :
+ 153             | EQ expression
+ 154             | EQ lval LPAREN arguments RPAREN
+
+ 155  %entry% : '\001' initialize
+ 156          | '\002' expression
+ 157          | '\003' typename
+ 158          | '\004' offset
+ 159          | '\005' lval
+ 160          | '\006' instr
+ 161          | '\007' stmt
+ 162          | '\010' stmt_list
+ 163          | '\011' prepost
+
+state 0
+	$accept : . %entry% $end  (0)
+
+	'\001'  shift 1
+	'\002'  shift 2
+	'\003'  shift 3
+	'\004'  shift 4
+	'\005'  shift 5
+	'\006'  shift 6
+	'\007'  shift 7
+	'\010'  shift 8
+	'\011'  shift 9
+	.  error
+
+	%entry%  goto 10
+
+
+state 1
+	%entry% : '\001' . initialize  (155)
+	initialize : .  (1)
+
+	.  reduce 1
+
+	initialize  goto 11
+
+
+state 2
+	%entry% : '\002' . expression  (156)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 29
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 3
+	%entry% : '\003' . typename  (157)
+
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_t  shift 44
+	ARG_f  shift 45
+	ARG_k  shift 46
+	TYPEOF  shift 47
+	.  error
+
+	typename  goto 48
+	type_spec  goto 49
+	one_formal  goto 50
+
+
+state 4
+	%entry% : '\004' . offset  (158)
+	offset : .  (47)
+
+	ARG_o  shift 51
+	DOT  shift 52
+	LBRACKET  shift 53
+	$end  reduce 47
+
+	offset  goto 54
+
+
+state 5
+	%entry% : '\005' . lval  (159)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 55
+	lval  goto 56
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 6
+	%entry% : '\006' . instr  (160)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	ASSERT  shift 59
+	ASSUME  shift 60
+	.  error
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 62
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+
+
+state 7
+	%entry% : '\007' . stmt  (161)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	ASSERT  shift 59
+	ASSUME  shift 60
+	.  error
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 73
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 8
+	%entry% : '\010' . stmt_list  (162)
+	stmt_list : .  (145)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_t  shift 44
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_k  shift 46
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_S  shift 75
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	TYPEOF  shift 47
+	ASSERT  shift 59
+	ASSUME  shift 60
+	$end  reduce 145
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 76
+	stmt_list  goto 77
+	constant  goto 31
+	type_spec  goto 78
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 9
+	%entry% : '\011' . prepost  (163)
+	prepost : .  (103)
+
+	PRECONDITION  shift 79
+	POSTCONDITION  shift 80
+	$end  reduce 103
+
+	prepost  goto 81
+	prepost_ne  goto 82
+	prepost_cond  goto 83
+
+
+state 10
+	$accept : %entry% . $end  (0)
+
+	$end  accept
+
+
+state 11
+	%entry% : '\001' initialize .  (155)
+
+	.  reduce 155
+
+
+state 12
+	argv : IDENT .  (45)
+
+	.  reduce 45
+
+
+state 13
+	constant : CST_INT .  (38)
+
+	.  reduce 38
+
+
+state 14
+	expression : ARG_e .  (2)
+
+	.  reduce 2
+
+
+state 15
+	argu : ARG_u .  (34)
+
+	.  reduce 34
+
+
+state 16
+	constant : ARG_d .  (36)
+
+	.  reduce 36
+
+
+state 17
+	lval : ARG_l .  (39)
+
+	.  reduce 39
+
+
+state 18
+	argv : ARG_v .  (44)
+
+	.  reduce 44
+
+
+state 19
+	constant : ARG_g .  (37)
+
+	.  reduce 37
+
+
+state 20
+	expression : SIZEOF . expression  (5)
+	expression : SIZEOF . LPAREN typename RPAREN  (6)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 84
+	.  error
+
+	expression  goto 85
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 21
+	expression : ALIGNOF . expression  (7)
+	expression : ALIGNOF . LPAREN typename RPAREN  (8)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 86
+	.  error
+
+	expression  goto 87
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 22
+	expression : PLUS . expression  (9)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 88
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 23
+	expression : MINUS . expression  (10)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 89
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 24
+	lval : STAR . expression  (41)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 90
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 25
+	expression : TILDE . expression  (12)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 91
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 26
+	expression : AND . expression  (14)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 92
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 27
+	expression : EXCLAM . expression  (11)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 93
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 28
+	expression : LPAREN . expression RPAREN  (15)
+	expression : LPAREN . typename RPAREN expression  (33)
+	lval : LPAREN . STAR expression RPAREN offset  (43)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_t  shift 44
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_f  shift 45
+	ARG_v  shift 18
+	ARG_k  shift 46
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 94
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	TYPEOF  shift 47
+	.  error
+
+	expression  goto 95
+	typename  goto 96
+	lval  goto 30
+	constant  goto 31
+	type_spec  goto 49
+	argu  goto 32
+	argv  goto 33
+	one_formal  goto 50
+
+
+state 29
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	%entry% : '\002' expression .  (156)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 156
+
+	argb  goto 115
+
+
+state 30
+	expression : lval .  (4)
+
+	.  reduce 4
+
+
+state 31
+	expression : constant .  (3)
+
+	.  reduce 3
+
+
+state 32
+	expression : argu . expression  (13)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 116
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 33
+	lval : argv . offset  (40)
+	offset : .  (47)
+
+	ARG_o  shift 51
+	DOT  shift 52
+	LBRACKET  shift 53
+	$end  reduce 47
+	ARG_b  reduce 47
+	EQ  reduce 47
+	ARROW  reduce 47
+	EQ_EQ  reduce 47
+	EXCLAM_EQ  reduce 47
+	INF  reduce 47
+	SUP  reduce 47
+	INF_EQ  reduce 47
+	SUP_EQ  reduce 47
+	MINUS_EQ  reduce 47
+	PLUS_EQ  reduce 47
+	STAR_EQ  reduce 47
+	PLUS  reduce 47
+	MINUS  reduce 47
+	STAR  reduce 47
+	SLASH  reduce 47
+	PERCENT  reduce 47
+	AND  reduce 47
+	PIPE  reduce 47
+	CIRC  reduce 47
+	INF_INF  reduce 47
+	SUP_SUP  reduce 47
+	RPAREN  reduce 47
+	LPAREN  reduce 47
+	RBRACKET  reduce 47
+	SEMICOLON  reduce 47
+	COMMA  reduce 47
+	SLASH_EQ  reduce 47
+	PERCENT_EQ  reduce 47
+	AND_EQ  reduce 47
+	PIPE_EQ  reduce 47
+	CIRC_EQ  reduce 47
+	INF_INF_EQ  reduce 47
+	SUP_SUP_EQ  reduce 47
+
+	offset  goto 117
+
+
+state 34
+	type_spec : CHAR .  (56)
+
+	.  reduce 56
+
+
+state 35
+	type_spec : INT .  (60)
+
+	.  reduce 60
+
+
+state 36
+	type_spec : DOUBLE .  (67)
+
+	.  reduce 67
+
+
+state 37
+	type_spec : FLOAT .  (66)
+
+	.  reduce 66
+
+
+state 38
+	type_spec : VOID .  (54)
+
+	.  reduce 54
+
+
+state 39
+	type_spec : STRUCT . ARG_c  (68)
+
+	ARG_c  shift 118
+	.  error
+
+
+state 40
+	type_spec : UNION . ARG_c  (69)
+
+	ARG_c  shift 119
+	.  error
+
+
+state 41
+	type_spec : UNSIGNED . CHAR  (57)
+	type_spec : UNSIGNED . SHORT  (59)
+	type_spec : UNSIGNED . INT  (61)
+	type_spec : UNSIGNED . LONG  (63)
+	type_spec : UNSIGNED . LONG LONG  (65)
+
+	CHAR  shift 120
+	INT  shift 121
+	LONG  shift 122
+	SHORT  shift 123
+	.  error
+
+
+state 42
+	type_spec : LONG .  (62)
+	type_spec : LONG . LONG  (64)
+
+	LONG  shift 124
+	$end  reduce 62
+	IDENT  reduce 62
+	VOLATILE  reduce 62
+	CONST  reduce 62
+	RESTRICT  reduce 62
+	ARG_A  reduce 62
+	EQ  reduce 62
+	STAR  reduce 62
+	RPAREN  reduce 62
+	LPAREN  reduce 62
+	LBRACKET  reduce 62
+	SEMICOLON  reduce 62
+	COMMA  reduce 62
+	ATTRIBUTE  reduce 62
+
+
+state 43
+	type_spec : SHORT .  (58)
+
+	.  reduce 58
+
+
+state 44
+	type_spec : ARG_t .  (53)
+
+	.  reduce 53
+
+
+state 45
+	one_formal : ARG_f .  (52)
+
+	.  reduce 52
+
+
+state 46
+	type_spec : ARG_k .  (55)
+
+	.  reduce 55
+
+
+state 47
+	type_spec : TYPEOF . LPAREN expression RPAREN  (70)
+
+	LPAREN  shift 125
+	.  error
+
+
+state 48
+	%entry% : '\003' typename .  (157)
+
+	.  reduce 157
+
+
+state 49
+	one_formal : type_spec . attributes decl  (51)
+	attributes : .  (88)
+
+	VOLATILE  shift 126
+	CONST  shift 127
+	RESTRICT  shift 128
+	ARG_A  shift 129
+	ATTRIBUTE  shift 130
+	$end  reduce 88
+	IDENT  reduce 88
+	STAR  reduce 88
+	RPAREN  reduce 88
+	LPAREN  reduce 88
+	LBRACKET  reduce 88
+	COMMA  reduce 88
+
+	attributes  goto 131
+	attribute  goto 132
+
+
+state 50
+	typename : one_formal .  (50)
+
+	.  reduce 50
+
+
+state 51
+	offset : ARG_o .  (46)
+
+	.  reduce 46
+
+
+state 52
+	offset : DOT . IDENT offset  (48)
+
+	IDENT  shift 133
+	.  error
+
+
+state 53
+	offset : LBRACKET . expression RBRACKET offset  (49)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 134
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 54
+	%entry% : '\004' offset .  (158)
+
+	.  reduce 158
+
+
+state 55
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	.  error
+
+	argb  goto 115
+
+
+state 56
+	expression : lval .  (4)
+	%entry% : '\005' lval .  (159)
+
+	$end  reduce 159
+	ARG_b  reduce 4
+	ARROW  reduce 4
+	EQ_EQ  reduce 4
+	EXCLAM_EQ  reduce 4
+	INF  reduce 4
+	SUP  reduce 4
+	INF_EQ  reduce 4
+	SUP_EQ  reduce 4
+	PLUS  reduce 4
+	MINUS  reduce 4
+	STAR  reduce 4
+	SLASH  reduce 4
+	PERCENT  reduce 4
+	AND  reduce 4
+	PIPE  reduce 4
+	CIRC  reduce 4
+	INF_INF  reduce 4
+	SUP_SUP  reduce 4
+
+
+state 57
+	arglo : ARG_lo .  (130)
+
+	.  reduce 130
+
+
+state 58
+	instr : ARG_i . SEMICOLON  (115)
+
+	SEMICOLON  shift 135
+	.  error
+
+
+state 59
+	instr : ASSERT . LPAREN IDENT COMMA CST_STRING RPAREN SEMICOLON  (111)
+	instr : ASSERT . LPAREN CST_STRING RPAREN SEMICOLON  (113)
+
+	LPAREN  shift 136
+	.  error
+
+
+state 60
+	instr : ASSUME . LPAREN IDENT COMMA CST_STRING RPAREN SEMICOLON  (112)
+	instr : ASSUME . LPAREN CST_STRING RPAREN SEMICOLON  (114)
+
+	LPAREN  shift 137
+	.  error
+
+
+state 61
+	expression : lval .  (4)
+	instr : lval . EQ expression SEMICOLON  (116)
+	instr : lval . PLUS_EQ expression SEMICOLON  (117)
+	instr : lval . MINUS_EQ expression SEMICOLON  (118)
+	instr : lval . STAR_EQ expression SEMICOLON  (119)
+	instr : lval . SLASH_EQ expression SEMICOLON  (120)
+	instr : lval . PERCENT_EQ expression SEMICOLON  (121)
+	instr : lval . AND_EQ expression SEMICOLON  (122)
+	instr : lval . PIPE_EQ expression SEMICOLON  (123)
+	instr : lval . CIRC_EQ expression SEMICOLON  (124)
+	instr : lval . INF_INF_EQ expression SEMICOLON  (125)
+	instr : lval . SUP_SUP_EQ expression SEMICOLON  (126)
+	instr : lval . EQ lval LPAREN arguments RPAREN SEMICOLON  (127)
+	instr : lval . LPAREN arguments RPAREN SEMICOLON  (128)
+
+	EQ  shift 138
+	MINUS_EQ  shift 139
+	PLUS_EQ  shift 140
+	STAR_EQ  shift 141
+	LPAREN  shift 142
+	SLASH_EQ  shift 143
+	PERCENT_EQ  shift 144
+	AND_EQ  shift 145
+	PIPE_EQ  shift 146
+	CIRC_EQ  shift 147
+	INF_INF_EQ  shift 148
+	SUP_SUP_EQ  shift 149
+	ARG_b  reduce 4
+	ARROW  reduce 4
+	EQ_EQ  reduce 4
+	EXCLAM_EQ  reduce 4
+	INF  reduce 4
+	SUP  reduce 4
+	INF_EQ  reduce 4
+	SUP_EQ  reduce 4
+	PLUS  reduce 4
+	MINUS  reduce 4
+	STAR  reduce 4
+	SLASH  reduce 4
+	PERCENT  reduce 4
+	AND  reduce 4
+	PIPE  reduce 4
+	CIRC  reduce 4
+	INF_INF  reduce 4
+	SUP_SUP  reduce 4
+
+
+state 62
+	%entry% : '\006' instr .  (160)
+
+	.  reduce 160
+
+
+state 63
+	instr : arglo . lval LPAREN arguments RPAREN SEMICOLON  (129)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 55
+	lval  goto 150
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 64
+	stmt : ARG_s .  (144)
+
+	.  reduce 144
+
+
+state 65
+	instr_list : ARG_I .  (150)
+
+	.  reduce 150
+
+
+state 66
+	stmt : LBRACE . stmt_list RBRACE  (141)
+	stmt_list : .  (145)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_t  shift 44
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_k  shift 46
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_S  shift 75
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	TYPEOF  shift 47
+	ASSERT  shift 59
+	ASSUME  shift 60
+	RBRACE  reduce 145
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 76
+	stmt_list  goto 151
+	constant  goto 31
+	type_spec  goto 78
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 67
+	stmt : BREAK . SEMICOLON  (139)
+
+	SEMICOLON  shift 152
+	.  error
+
+
+state 68
+	stmt : CONTINUE . SEMICOLON  (140)
+
+	SEMICOLON  shift 153
+	.  error
+
+
+state 69
+	stmt : RETURN . exp_opt SEMICOLON  (138)
+	exp_opt : .  (85)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_eo  shift 154
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	SEMICOLON  reduce 85
+
+	expression  goto 155
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	exp_opt  goto 156
+
+
+state 70
+	stmt : WHILE . LPAREN expression RPAREN stmt  (142)
+
+	LPAREN  shift 157
+	.  error
+
+
+state 71
+	stmt : IF . LPAREN expression RPAREN stmt  (136)
+	stmt : IF . LPAREN expression RPAREN stmt ELSE stmt  (137)
+
+	LPAREN  shift 158
+	.  error
+
+
+72: shift/reduce conflict (shift 59, reduce 149) on ASSERT
+72: shift/reduce conflict (shift 60, reduce 149) on ASSUME
+state 72
+	instr_list : instr .  (149)
+	instr_list : instr . instr_list  (151)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_I  shift 65
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	ASSERT  shift 59
+	ASSUME  shift 60
+	$end  reduce 149
+	CHAR  reduce 149
+	INT  reduce 149
+	DOUBLE  reduce 149
+	FLOAT  reduce 149
+	VOID  reduce 149
+	STRUCT  reduce 149
+	UNION  reduce 149
+	UNSIGNED  reduce 149
+	LONG  reduce 149
+	SHORT  reduce 149
+	ARG_t  reduce 149
+	ARG_k  reduce 149
+	ARG_s  reduce 149
+	ARG_S  reduce 149
+	RBRACE  reduce 149
+	LBRACE  reduce 149
+	BREAK  reduce 149
+	CONTINUE  reduce 149
+	RETURN  reduce 149
+	WHILE  reduce 149
+	IF  reduce 149
+	ELSE  reduce 149
+	TYPEOF  reduce 149
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 159
+
+
+state 73
+	%entry% : '\007' stmt .  (161)
+
+	.  reduce 161
+
+
+state 74
+	stmt : instr_list .  (143)
+
+	.  reduce 143
+
+
+state 75
+	stmt_list : ARG_S .  (146)
+
+	.  reduce 146
+
+
+state 76
+	stmt_list : stmt . stmt_list  (147)
+	stmt_list : .  (145)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_t  shift 44
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_k  shift 46
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_S  shift 75
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	TYPEOF  shift 47
+	ASSERT  shift 59
+	ASSUME  shift 60
+	$end  reduce 145
+	RBRACE  reduce 145
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 76
+	stmt_list  goto 160
+	constant  goto 31
+	type_spec  goto 78
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 77
+	%entry% : '\010' stmt_list .  (162)
+
+	.  reduce 162
+
+
+state 78
+	stmt_list : type_spec . attributes decl maybe_init SEMICOLON stmt_list  (148)
+	attributes : .  (88)
+
+	VOLATILE  shift 126
+	CONST  shift 127
+	RESTRICT  shift 128
+	ARG_A  shift 129
+	ATTRIBUTE  shift 130
+	IDENT  reduce 88
+	EQ  reduce 88
+	STAR  reduce 88
+	LPAREN  reduce 88
+	LBRACKET  reduce 88
+	SEMICOLON  reduce 88
+
+	attributes  goto 161
+	attribute  goto 132
+
+
+state 79
+	prepost_cond : PRECONDITION . LPAREN IDENT RPAREN COLON CST_STRING SEMICOLON  (107)
+	prepost_cond : PRECONDITION . COLON CST_STRING SEMICOLON  (108)
+
+	LPAREN  shift 162
+	COLON  shift 163
+	.  error
+
+
+state 80
+	prepost_cond : POSTCONDITION . LPAREN IDENT RPAREN COLON CST_STRING SEMICOLON  (109)
+	prepost_cond : POSTCONDITION . COLON CST_STRING SEMICOLON  (110)
+
+	LPAREN  shift 164
+	COLON  shift 165
+	.  error
+
+
+state 81
+	%entry% : '\011' prepost .  (163)
+
+	.  reduce 163
+
+
+state 82
+	prepost : prepost_ne .  (104)
+
+	.  reduce 104
+
+
+state 83
+	prepost_ne : prepost_cond .  (105)
+	prepost_ne : prepost_cond . prepost_ne  (106)
+
+	PRECONDITION  shift 79
+	POSTCONDITION  shift 80
+	$end  reduce 105
+
+	prepost_ne  goto 166
+	prepost_cond  goto 83
+
+
+state 84
+	expression : SIZEOF LPAREN . typename RPAREN  (6)
+	expression : LPAREN . expression RPAREN  (15)
+	expression : LPAREN . typename RPAREN expression  (33)
+	lval : LPAREN . STAR expression RPAREN offset  (43)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_t  shift 44
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_f  shift 45
+	ARG_v  shift 18
+	ARG_k  shift 46
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 94
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	TYPEOF  shift 47
+	.  error
+
+	expression  goto 95
+	typename  goto 167
+	lval  goto 30
+	constant  goto 31
+	type_spec  goto 49
+	argu  goto 32
+	argv  goto 33
+	one_formal  goto 50
+
+
+state 85
+	expression : SIZEOF expression .  (5)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 5
+	ARG_b  reduce 5
+	EQ  reduce 5
+	EQ_EQ  reduce 5
+	EXCLAM_EQ  reduce 5
+	INF  reduce 5
+	SUP  reduce 5
+	INF_EQ  reduce 5
+	SUP_EQ  reduce 5
+	MINUS_EQ  reduce 5
+	PLUS_EQ  reduce 5
+	STAR_EQ  reduce 5
+	PLUS  reduce 5
+	MINUS  reduce 5
+	STAR  reduce 5
+	SLASH  reduce 5
+	PERCENT  reduce 5
+	AND  reduce 5
+	PIPE  reduce 5
+	CIRC  reduce 5
+	INF_INF  reduce 5
+	SUP_SUP  reduce 5
+	RPAREN  reduce 5
+	LPAREN  reduce 5
+	RBRACKET  reduce 5
+	SEMICOLON  reduce 5
+	COMMA  reduce 5
+	SLASH_EQ  reduce 5
+	PERCENT_EQ  reduce 5
+	AND_EQ  reduce 5
+	PIPE_EQ  reduce 5
+	CIRC_EQ  reduce 5
+	INF_INF_EQ  reduce 5
+	SUP_SUP_EQ  reduce 5
+
+	argb  goto 115
+
+
+state 86
+	expression : ALIGNOF LPAREN . typename RPAREN  (8)
+	expression : LPAREN . expression RPAREN  (15)
+	expression : LPAREN . typename RPAREN expression  (33)
+	lval : LPAREN . STAR expression RPAREN offset  (43)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_t  shift 44
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_f  shift 45
+	ARG_v  shift 18
+	ARG_k  shift 46
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 94
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	TYPEOF  shift 47
+	.  error
+
+	expression  goto 95
+	typename  goto 168
+	lval  goto 30
+	constant  goto 31
+	type_spec  goto 49
+	argu  goto 32
+	argv  goto 33
+	one_formal  goto 50
+
+
+state 87
+	expression : ALIGNOF expression .  (7)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 7
+	ARG_b  reduce 7
+	EQ  reduce 7
+	EQ_EQ  reduce 7
+	EXCLAM_EQ  reduce 7
+	INF  reduce 7
+	SUP  reduce 7
+	INF_EQ  reduce 7
+	SUP_EQ  reduce 7
+	MINUS_EQ  reduce 7
+	PLUS_EQ  reduce 7
+	STAR_EQ  reduce 7
+	PLUS  reduce 7
+	MINUS  reduce 7
+	STAR  reduce 7
+	SLASH  reduce 7
+	PERCENT  reduce 7
+	AND  reduce 7
+	PIPE  reduce 7
+	CIRC  reduce 7
+	INF_INF  reduce 7
+	SUP_SUP  reduce 7
+	RPAREN  reduce 7
+	LPAREN  reduce 7
+	RBRACKET  reduce 7
+	SEMICOLON  reduce 7
+	COMMA  reduce 7
+	SLASH_EQ  reduce 7
+	PERCENT_EQ  reduce 7
+	AND_EQ  reduce 7
+	PIPE_EQ  reduce 7
+	CIRC_EQ  reduce 7
+	INF_INF_EQ  reduce 7
+	SUP_SUP_EQ  reduce 7
+
+	argb  goto 115
+
+
+state 88
+	expression : PLUS expression .  (9)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	$end  reduce 9
+	ARG_b  reduce 9
+	EQ  reduce 9
+	EQ_EQ  reduce 9
+	EXCLAM_EQ  reduce 9
+	INF  reduce 9
+	SUP  reduce 9
+	INF_EQ  reduce 9
+	SUP_EQ  reduce 9
+	MINUS_EQ  reduce 9
+	PLUS_EQ  reduce 9
+	STAR_EQ  reduce 9
+	PLUS  reduce 9
+	MINUS  reduce 9
+	AND  reduce 9
+	PIPE  reduce 9
+	CIRC  reduce 9
+	INF_INF  reduce 9
+	SUP_SUP  reduce 9
+	RPAREN  reduce 9
+	LPAREN  reduce 9
+	RBRACKET  reduce 9
+	SEMICOLON  reduce 9
+	COMMA  reduce 9
+	SLASH_EQ  reduce 9
+	PERCENT_EQ  reduce 9
+	AND_EQ  reduce 9
+	PIPE_EQ  reduce 9
+	CIRC_EQ  reduce 9
+	INF_INF_EQ  reduce 9
+	SUP_SUP_EQ  reduce 9
+
+	argb  goto 115
+
+
+state 89
+	expression : MINUS expression .  (10)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	$end  reduce 10
+	ARG_b  reduce 10
+	EQ  reduce 10
+	EQ_EQ  reduce 10
+	EXCLAM_EQ  reduce 10
+	INF  reduce 10
+	SUP  reduce 10
+	INF_EQ  reduce 10
+	SUP_EQ  reduce 10
+	MINUS_EQ  reduce 10
+	PLUS_EQ  reduce 10
+	STAR_EQ  reduce 10
+	PLUS  reduce 10
+	MINUS  reduce 10
+	AND  reduce 10
+	PIPE  reduce 10
+	CIRC  reduce 10
+	INF_INF  reduce 10
+	SUP_SUP  reduce 10
+	RPAREN  reduce 10
+	LPAREN  reduce 10
+	RBRACKET  reduce 10
+	SEMICOLON  reduce 10
+	COMMA  reduce 10
+	SLASH_EQ  reduce 10
+	PERCENT_EQ  reduce 10
+	AND_EQ  reduce 10
+	PIPE_EQ  reduce 10
+	CIRC_EQ  reduce 10
+	INF_INF_EQ  reduce 10
+	SUP_SUP_EQ  reduce 10
+
+	argb  goto 115
+
+
+state 90
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : STAR expression .  (41)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 41
+	ARG_b  reduce 41
+	EQ  reduce 41
+	EQ_EQ  reduce 41
+	EXCLAM_EQ  reduce 41
+	INF  reduce 41
+	SUP  reduce 41
+	INF_EQ  reduce 41
+	SUP_EQ  reduce 41
+	MINUS_EQ  reduce 41
+	PLUS_EQ  reduce 41
+	STAR_EQ  reduce 41
+	PLUS  reduce 41
+	MINUS  reduce 41
+	STAR  reduce 41
+	SLASH  reduce 41
+	PERCENT  reduce 41
+	AND  reduce 41
+	PIPE  reduce 41
+	CIRC  reduce 41
+	INF_INF  reduce 41
+	SUP_SUP  reduce 41
+	RPAREN  reduce 41
+	LPAREN  reduce 41
+	RBRACKET  reduce 41
+	SEMICOLON  reduce 41
+	COMMA  reduce 41
+	SLASH_EQ  reduce 41
+	PERCENT_EQ  reduce 41
+	AND_EQ  reduce 41
+	PIPE_EQ  reduce 41
+	CIRC_EQ  reduce 41
+	INF_INF_EQ  reduce 41
+	SUP_SUP_EQ  reduce 41
+
+	argb  goto 115
+
+
+state 91
+	expression : TILDE expression .  (12)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 12
+	ARG_b  reduce 12
+	EQ  reduce 12
+	EQ_EQ  reduce 12
+	EXCLAM_EQ  reduce 12
+	INF  reduce 12
+	SUP  reduce 12
+	INF_EQ  reduce 12
+	SUP_EQ  reduce 12
+	MINUS_EQ  reduce 12
+	PLUS_EQ  reduce 12
+	STAR_EQ  reduce 12
+	PLUS  reduce 12
+	MINUS  reduce 12
+	STAR  reduce 12
+	SLASH  reduce 12
+	PERCENT  reduce 12
+	AND  reduce 12
+	PIPE  reduce 12
+	CIRC  reduce 12
+	INF_INF  reduce 12
+	SUP_SUP  reduce 12
+	RPAREN  reduce 12
+	LPAREN  reduce 12
+	RBRACKET  reduce 12
+	SEMICOLON  reduce 12
+	COMMA  reduce 12
+	SLASH_EQ  reduce 12
+	PERCENT_EQ  reduce 12
+	AND_EQ  reduce 12
+	PIPE_EQ  reduce 12
+	CIRC_EQ  reduce 12
+	INF_INF_EQ  reduce 12
+	SUP_SUP_EQ  reduce 12
+
+	argb  goto 115
+
+
+state 92
+	expression : AND expression .  (14)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 14
+	ARG_b  reduce 14
+	EQ  reduce 14
+	EQ_EQ  reduce 14
+	EXCLAM_EQ  reduce 14
+	INF  reduce 14
+	SUP  reduce 14
+	INF_EQ  reduce 14
+	SUP_EQ  reduce 14
+	MINUS_EQ  reduce 14
+	PLUS_EQ  reduce 14
+	STAR_EQ  reduce 14
+	PLUS  reduce 14
+	MINUS  reduce 14
+	STAR  reduce 14
+	SLASH  reduce 14
+	PERCENT  reduce 14
+	AND  reduce 14
+	PIPE  reduce 14
+	CIRC  reduce 14
+	INF_INF  reduce 14
+	SUP_SUP  reduce 14
+	RPAREN  reduce 14
+	LPAREN  reduce 14
+	RBRACKET  reduce 14
+	SEMICOLON  reduce 14
+	COMMA  reduce 14
+	SLASH_EQ  reduce 14
+	PERCENT_EQ  reduce 14
+	AND_EQ  reduce 14
+	PIPE_EQ  reduce 14
+	CIRC_EQ  reduce 14
+	INF_INF_EQ  reduce 14
+	SUP_SUP_EQ  reduce 14
+
+	argb  goto 115
+
+
+state 93
+	expression : EXCLAM expression .  (11)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 11
+	ARG_b  reduce 11
+	EQ  reduce 11
+	EQ_EQ  reduce 11
+	EXCLAM_EQ  reduce 11
+	INF  reduce 11
+	SUP  reduce 11
+	INF_EQ  reduce 11
+	SUP_EQ  reduce 11
+	MINUS_EQ  reduce 11
+	PLUS_EQ  reduce 11
+	STAR_EQ  reduce 11
+	PLUS  reduce 11
+	MINUS  reduce 11
+	STAR  reduce 11
+	SLASH  reduce 11
+	PERCENT  reduce 11
+	AND  reduce 11
+	PIPE  reduce 11
+	CIRC  reduce 11
+	INF_INF  reduce 11
+	SUP_SUP  reduce 11
+	RPAREN  reduce 11
+	LPAREN  reduce 11
+	RBRACKET  reduce 11
+	SEMICOLON  reduce 11
+	COMMA  reduce 11
+	SLASH_EQ  reduce 11
+	PERCENT_EQ  reduce 11
+	AND_EQ  reduce 11
+	PIPE_EQ  reduce 11
+	CIRC_EQ  reduce 11
+	INF_INF_EQ  reduce 11
+	SUP_SUP_EQ  reduce 11
+
+	argb  goto 115
+
+
+state 94
+	lval : STAR . expression  (41)
+	lval : LPAREN STAR . expression RPAREN offset  (43)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 169
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 95
+	expression : LPAREN expression . RPAREN  (15)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	RPAREN  shift 170
+	.  error
+
+	argb  goto 115
+
+
+state 96
+	expression : LPAREN typename . RPAREN expression  (33)
+
+	RPAREN  shift 171
+	.  error
+
+
+state 97
+	argb : ARG_b .  (35)
+
+	.  reduce 35
+
+
+state 98
+	lval : expression ARROW . IDENT offset  (42)
+
+	IDENT  shift 172
+	.  error
+
+
+state 99
+	expression : expression EQ_EQ . expression  (27)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 173
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 100
+	expression : expression EXCLAM_EQ . expression  (28)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 174
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 101
+	expression : expression INF . expression  (29)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 175
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 102
+	expression : expression SUP . expression  (30)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 176
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 103
+	expression : expression INF_EQ . expression  (31)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 177
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 104
+	expression : expression SUP_EQ . expression  (32)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 178
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 105
+	expression : expression PLUS . expression  (16)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 179
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 106
+	expression : expression MINUS . expression  (17)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 180
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 107
+	expression : expression STAR . expression  (19)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 181
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 108
+	expression : expression SLASH . expression  (20)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 182
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 109
+	expression : expression PERCENT . expression  (21)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 183
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 110
+	expression : expression AND . expression  (24)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 184
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 111
+	expression : expression PIPE . expression  (25)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 185
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 112
+	expression : expression CIRC . expression  (26)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 186
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 113
+	expression : expression INF_INF . expression  (22)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 187
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 114
+	expression : expression SUP_SUP . expression  (23)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 188
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 115
+	expression : expression argb . expression  (18)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 189
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 116
+	expression : argu expression .  (13)
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 13
+	ARG_b  reduce 13
+	EQ  reduce 13
+	EQ_EQ  reduce 13
+	EXCLAM_EQ  reduce 13
+	INF  reduce 13
+	SUP  reduce 13
+	INF_EQ  reduce 13
+	SUP_EQ  reduce 13
+	MINUS_EQ  reduce 13
+	PLUS_EQ  reduce 13
+	STAR_EQ  reduce 13
+	PLUS  reduce 13
+	MINUS  reduce 13
+	STAR  reduce 13
+	SLASH  reduce 13
+	PERCENT  reduce 13
+	AND  reduce 13
+	PIPE  reduce 13
+	CIRC  reduce 13
+	INF_INF  reduce 13
+	SUP_SUP  reduce 13
+	RPAREN  reduce 13
+	LPAREN  reduce 13
+	RBRACKET  reduce 13
+	SEMICOLON  reduce 13
+	COMMA  reduce 13
+	SLASH_EQ  reduce 13
+	PERCENT_EQ  reduce 13
+	AND_EQ  reduce 13
+	PIPE_EQ  reduce 13
+	CIRC_EQ  reduce 13
+	INF_INF_EQ  reduce 13
+	SUP_SUP_EQ  reduce 13
+
+	argb  goto 115
+
+
+state 117
+	lval : argv offset .  (40)
+
+	.  reduce 40
+
+
+state 118
+	type_spec : STRUCT ARG_c .  (68)
+
+	.  reduce 68
+
+
+state 119
+	type_spec : UNION ARG_c .  (69)
+
+	.  reduce 69
+
+
+state 120
+	type_spec : UNSIGNED CHAR .  (57)
+
+	.  reduce 57
+
+
+state 121
+	type_spec : UNSIGNED INT .  (61)
+
+	.  reduce 61
+
+
+state 122
+	type_spec : UNSIGNED LONG .  (63)
+	type_spec : UNSIGNED LONG . LONG  (65)
+
+	LONG  shift 190
+	$end  reduce 63
+	IDENT  reduce 63
+	VOLATILE  reduce 63
+	CONST  reduce 63
+	RESTRICT  reduce 63
+	ARG_A  reduce 63
+	EQ  reduce 63
+	STAR  reduce 63
+	RPAREN  reduce 63
+	LPAREN  reduce 63
+	LBRACKET  reduce 63
+	SEMICOLON  reduce 63
+	COMMA  reduce 63
+	ATTRIBUTE  reduce 63
+
+
+state 123
+	type_spec : UNSIGNED SHORT .  (59)
+
+	.  reduce 59
+
+
+state 124
+	type_spec : LONG LONG .  (64)
+
+	.  reduce 64
+
+
+state 125
+	type_spec : TYPEOF LPAREN . expression RPAREN  (70)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 191
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 126
+	attribute : VOLATILE .  (93)
+
+	.  reduce 93
+
+
+state 127
+	attribute : CONST .  (91)
+
+	.  reduce 91
+
+
+state 128
+	attribute : RESTRICT .  (92)
+
+	.  reduce 92
+
+
+state 129
+	attributes : ARG_A .  (89)
+
+	.  reduce 89
+
+
+state 130
+	attribute : ATTRIBUTE . LPAREN LPAREN attr RPAREN RPAREN  (94)
+
+	LPAREN  shift 192
+	.  error
+
+
+state 131
+	one_formal : type_spec attributes . decl  (51)
+	direct_decl : .  (73)
+
+	IDENT  shift 193
+	STAR  shift 194
+	LPAREN  shift 195
+	$end  reduce 73
+	RPAREN  reduce 73
+	LBRACKET  reduce 73
+	COMMA  reduce 73
+
+	decl  goto 196
+	direct_decl  goto 197
+
+
+state 132
+	attributes : attribute . attributes  (90)
+	attributes : .  (88)
+
+	VOLATILE  shift 126
+	CONST  shift 127
+	RESTRICT  shift 128
+	ARG_A  shift 129
+	ATTRIBUTE  shift 130
+	$end  reduce 88
+	IDENT  reduce 88
+	EQ  reduce 88
+	STAR  reduce 88
+	RPAREN  reduce 88
+	LPAREN  reduce 88
+	LBRACKET  reduce 88
+	SEMICOLON  reduce 88
+	COMMA  reduce 88
+
+	attributes  goto 198
+	attribute  goto 132
+
+
+state 133
+	offset : DOT IDENT . offset  (48)
+	offset : .  (47)
+
+	ARG_o  shift 51
+	DOT  shift 52
+	LBRACKET  shift 53
+	$end  reduce 47
+	ARG_b  reduce 47
+	EQ  reduce 47
+	ARROW  reduce 47
+	EQ_EQ  reduce 47
+	EXCLAM_EQ  reduce 47
+	INF  reduce 47
+	SUP  reduce 47
+	INF_EQ  reduce 47
+	SUP_EQ  reduce 47
+	MINUS_EQ  reduce 47
+	PLUS_EQ  reduce 47
+	STAR_EQ  reduce 47
+	PLUS  reduce 47
+	MINUS  reduce 47
+	STAR  reduce 47
+	SLASH  reduce 47
+	PERCENT  reduce 47
+	AND  reduce 47
+	PIPE  reduce 47
+	CIRC  reduce 47
+	INF_INF  reduce 47
+	SUP_SUP  reduce 47
+	RPAREN  reduce 47
+	LPAREN  reduce 47
+	RBRACKET  reduce 47
+	SEMICOLON  reduce 47
+	COMMA  reduce 47
+	SLASH_EQ  reduce 47
+	PERCENT_EQ  reduce 47
+	AND_EQ  reduce 47
+	PIPE_EQ  reduce 47
+	CIRC_EQ  reduce 47
+	INF_INF_EQ  reduce 47
+	SUP_SUP_EQ  reduce 47
+
+	offset  goto 199
+
+
+state 134
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	offset : LBRACKET expression . RBRACKET offset  (49)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	RBRACKET  shift 200
+	.  error
+
+	argb  goto 115
+
+
+state 135
+	instr : ARG_i SEMICOLON .  (115)
+
+	.  reduce 115
+
+
+state 136
+	instr : ASSERT LPAREN . IDENT COMMA CST_STRING RPAREN SEMICOLON  (111)
+	instr : ASSERT LPAREN . CST_STRING RPAREN SEMICOLON  (113)
+
+	IDENT  shift 201
+	CST_STRING  shift 202
+	.  error
+
+
+state 137
+	instr : ASSUME LPAREN . IDENT COMMA CST_STRING RPAREN SEMICOLON  (112)
+	instr : ASSUME LPAREN . CST_STRING RPAREN SEMICOLON  (114)
+
+	IDENT  shift 203
+	CST_STRING  shift 204
+	.  error
+
+
+state 138
+	instr : lval EQ . expression SEMICOLON  (116)
+	instr : lval EQ . lval LPAREN arguments RPAREN SEMICOLON  (127)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 205
+	lval  goto 206
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 139
+	instr : lval MINUS_EQ . expression SEMICOLON  (118)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 207
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 140
+	instr : lval PLUS_EQ . expression SEMICOLON  (117)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 208
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 141
+	instr : lval STAR_EQ . expression SEMICOLON  (119)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 209
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 142
+	instr : lval LPAREN . arguments RPAREN SEMICOLON  (128)
+	arguments : .  (131)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_E  shift 210
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	RPAREN  reduce 131
+
+	expression  goto 211
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arguments  goto 212
+	arguments_ne  goto 213
+
+
+state 143
+	instr : lval SLASH_EQ . expression SEMICOLON  (120)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 214
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 144
+	instr : lval PERCENT_EQ . expression SEMICOLON  (121)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 215
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 145
+	instr : lval AND_EQ . expression SEMICOLON  (122)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 216
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 146
+	instr : lval PIPE_EQ . expression SEMICOLON  (123)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 217
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 147
+	instr : lval CIRC_EQ . expression SEMICOLON  (124)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 218
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 148
+	instr : lval INF_INF_EQ . expression SEMICOLON  (125)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 219
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 149
+	instr : lval SUP_SUP_EQ . expression SEMICOLON  (126)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 220
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 150
+	expression : lval .  (4)
+	instr : arglo lval . LPAREN arguments RPAREN SEMICOLON  (129)
+
+	LPAREN  shift 221
+	ARG_b  reduce 4
+	ARROW  reduce 4
+	EQ_EQ  reduce 4
+	EXCLAM_EQ  reduce 4
+	INF  reduce 4
+	SUP  reduce 4
+	INF_EQ  reduce 4
+	SUP_EQ  reduce 4
+	PLUS  reduce 4
+	MINUS  reduce 4
+	STAR  reduce 4
+	SLASH  reduce 4
+	PERCENT  reduce 4
+	AND  reduce 4
+	PIPE  reduce 4
+	CIRC  reduce 4
+	INF_INF  reduce 4
+	SUP_SUP  reduce 4
+
+
+state 151
+	stmt : LBRACE stmt_list . RBRACE  (141)
+
+	RBRACE  shift 222
+	.  error
+
+
+state 152
+	stmt : BREAK SEMICOLON .  (139)
+
+	.  reduce 139
+
+
+state 153
+	stmt : CONTINUE SEMICOLON .  (140)
+
+	.  reduce 140
+
+
+state 154
+	exp_opt : ARG_eo .  (87)
+
+	.  reduce 87
+
+
+state 155
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	exp_opt : expression .  (86)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	RBRACKET  reduce 86
+	SEMICOLON  reduce 86
+
+	argb  goto 115
+
+
+state 156
+	stmt : RETURN exp_opt . SEMICOLON  (138)
+
+	SEMICOLON  shift 223
+	.  error
+
+
+state 157
+	stmt : WHILE LPAREN . expression RPAREN stmt  (142)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 224
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 158
+	stmt : IF LPAREN . expression RPAREN stmt  (136)
+	stmt : IF LPAREN . expression RPAREN stmt ELSE stmt  (137)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 225
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 159
+	instr_list : instr instr_list .  (151)
+
+	.  reduce 151
+
+
+state 160
+	stmt_list : stmt stmt_list .  (147)
+
+	.  reduce 147
+
+
+state 161
+	stmt_list : type_spec attributes . decl maybe_init SEMICOLON stmt_list  (148)
+	direct_decl : .  (73)
+
+	IDENT  shift 193
+	STAR  shift 194
+	LPAREN  shift 195
+	EQ  reduce 73
+	LBRACKET  reduce 73
+	SEMICOLON  reduce 73
+
+	decl  goto 226
+	direct_decl  goto 197
+
+
+state 162
+	prepost_cond : PRECONDITION LPAREN . IDENT RPAREN COLON CST_STRING SEMICOLON  (107)
+
+	IDENT  shift 227
+	.  error
+
+
+state 163
+	prepost_cond : PRECONDITION COLON . CST_STRING SEMICOLON  (108)
+
+	CST_STRING  shift 228
+	.  error
+
+
+state 164
+	prepost_cond : POSTCONDITION LPAREN . IDENT RPAREN COLON CST_STRING SEMICOLON  (109)
+
+	IDENT  shift 229
+	.  error
+
+
+state 165
+	prepost_cond : POSTCONDITION COLON . CST_STRING SEMICOLON  (110)
+
+	CST_STRING  shift 230
+	.  error
+
+
+state 166
+	prepost_ne : prepost_cond prepost_ne .  (106)
+
+	.  reduce 106
+
+
+state 167
+	expression : SIZEOF LPAREN typename . RPAREN  (6)
+	expression : LPAREN typename . RPAREN expression  (33)
+
+	RPAREN  shift 231
+	.  error
+
+
+state 168
+	expression : ALIGNOF LPAREN typename . RPAREN  (8)
+	expression : LPAREN typename . RPAREN expression  (33)
+
+	RPAREN  shift 232
+	.  error
+
+
+state 169
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : STAR expression .  (41)
+	lval : expression . ARROW IDENT offset  (42)
+	lval : LPAREN STAR expression . RPAREN offset  (43)
+
+	ARROW  shift 98
+	RPAREN  shift 233
+	ARG_b  reduce 41
+	EQ_EQ  reduce 41
+	EXCLAM_EQ  reduce 41
+	INF  reduce 41
+	SUP  reduce 41
+	INF_EQ  reduce 41
+	SUP_EQ  reduce 41
+	PLUS  reduce 41
+	MINUS  reduce 41
+	STAR  reduce 41
+	SLASH  reduce 41
+	PERCENT  reduce 41
+	AND  reduce 41
+	PIPE  reduce 41
+	CIRC  reduce 41
+	INF_INF  reduce 41
+	SUP_SUP  reduce 41
+
+	argb  goto 115
+
+
+state 170
+	expression : LPAREN expression RPAREN .  (15)
+
+	.  reduce 15
+
+
+state 171
+	expression : LPAREN typename RPAREN . expression  (33)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 234
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 172
+	lval : expression ARROW IDENT . offset  (42)
+	offset : .  (47)
+
+	ARG_o  shift 51
+	DOT  shift 52
+	LBRACKET  shift 53
+	$end  reduce 47
+	ARG_b  reduce 47
+	EQ  reduce 47
+	ARROW  reduce 47
+	EQ_EQ  reduce 47
+	EXCLAM_EQ  reduce 47
+	INF  reduce 47
+	SUP  reduce 47
+	INF_EQ  reduce 47
+	SUP_EQ  reduce 47
+	MINUS_EQ  reduce 47
+	PLUS_EQ  reduce 47
+	STAR_EQ  reduce 47
+	PLUS  reduce 47
+	MINUS  reduce 47
+	STAR  reduce 47
+	SLASH  reduce 47
+	PERCENT  reduce 47
+	AND  reduce 47
+	PIPE  reduce 47
+	CIRC  reduce 47
+	INF_INF  reduce 47
+	SUP_SUP  reduce 47
+	RPAREN  reduce 47
+	LPAREN  reduce 47
+	RBRACKET  reduce 47
+	SEMICOLON  reduce 47
+	COMMA  reduce 47
+	SLASH_EQ  reduce 47
+	PERCENT_EQ  reduce 47
+	AND_EQ  reduce 47
+	PIPE_EQ  reduce 47
+	CIRC_EQ  reduce 47
+	INF_INF_EQ  reduce 47
+	SUP_SUP_EQ  reduce 47
+
+	offset  goto 235
+
+
+state 173
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression EQ_EQ expression .  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 27
+	ARG_b  reduce 27
+	EQ  reduce 27
+	EQ_EQ  reduce 27
+	EXCLAM_EQ  reduce 27
+	MINUS_EQ  reduce 27
+	PLUS_EQ  reduce 27
+	STAR_EQ  reduce 27
+	AND  reduce 27
+	PIPE  reduce 27
+	CIRC  reduce 27
+	RPAREN  reduce 27
+	LPAREN  reduce 27
+	RBRACKET  reduce 27
+	SEMICOLON  reduce 27
+	COMMA  reduce 27
+	SLASH_EQ  reduce 27
+	PERCENT_EQ  reduce 27
+	AND_EQ  reduce 27
+	PIPE_EQ  reduce 27
+	CIRC_EQ  reduce 27
+	INF_INF_EQ  reduce 27
+	SUP_SUP_EQ  reduce 27
+
+	argb  goto 115
+
+
+state 174
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression EXCLAM_EQ expression .  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 28
+	ARG_b  reduce 28
+	EQ  reduce 28
+	EQ_EQ  reduce 28
+	EXCLAM_EQ  reduce 28
+	MINUS_EQ  reduce 28
+	PLUS_EQ  reduce 28
+	STAR_EQ  reduce 28
+	AND  reduce 28
+	PIPE  reduce 28
+	CIRC  reduce 28
+	RPAREN  reduce 28
+	LPAREN  reduce 28
+	RBRACKET  reduce 28
+	SEMICOLON  reduce 28
+	COMMA  reduce 28
+	SLASH_EQ  reduce 28
+	PERCENT_EQ  reduce 28
+	AND_EQ  reduce 28
+	PIPE_EQ  reduce 28
+	CIRC_EQ  reduce 28
+	INF_INF_EQ  reduce 28
+	SUP_SUP_EQ  reduce 28
+
+	argb  goto 115
+
+
+state 175
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression INF expression .  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 29
+	ARG_b  reduce 29
+	EQ  reduce 29
+	EQ_EQ  reduce 29
+	EXCLAM_EQ  reduce 29
+	INF  reduce 29
+	SUP  reduce 29
+	INF_EQ  reduce 29
+	SUP_EQ  reduce 29
+	MINUS_EQ  reduce 29
+	PLUS_EQ  reduce 29
+	STAR_EQ  reduce 29
+	AND  reduce 29
+	PIPE  reduce 29
+	CIRC  reduce 29
+	RPAREN  reduce 29
+	LPAREN  reduce 29
+	RBRACKET  reduce 29
+	SEMICOLON  reduce 29
+	COMMA  reduce 29
+	SLASH_EQ  reduce 29
+	PERCENT_EQ  reduce 29
+	AND_EQ  reduce 29
+	PIPE_EQ  reduce 29
+	CIRC_EQ  reduce 29
+	INF_INF_EQ  reduce 29
+	SUP_SUP_EQ  reduce 29
+
+	argb  goto 115
+
+
+state 176
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression SUP expression .  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 30
+	ARG_b  reduce 30
+	EQ  reduce 30
+	EQ_EQ  reduce 30
+	EXCLAM_EQ  reduce 30
+	INF  reduce 30
+	SUP  reduce 30
+	INF_EQ  reduce 30
+	SUP_EQ  reduce 30
+	MINUS_EQ  reduce 30
+	PLUS_EQ  reduce 30
+	STAR_EQ  reduce 30
+	AND  reduce 30
+	PIPE  reduce 30
+	CIRC  reduce 30
+	RPAREN  reduce 30
+	LPAREN  reduce 30
+	RBRACKET  reduce 30
+	SEMICOLON  reduce 30
+	COMMA  reduce 30
+	SLASH_EQ  reduce 30
+	PERCENT_EQ  reduce 30
+	AND_EQ  reduce 30
+	PIPE_EQ  reduce 30
+	CIRC_EQ  reduce 30
+	INF_INF_EQ  reduce 30
+	SUP_SUP_EQ  reduce 30
+
+	argb  goto 115
+
+
+state 177
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression INF_EQ expression .  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 31
+	ARG_b  reduce 31
+	EQ  reduce 31
+	EQ_EQ  reduce 31
+	EXCLAM_EQ  reduce 31
+	INF  reduce 31
+	SUP  reduce 31
+	INF_EQ  reduce 31
+	SUP_EQ  reduce 31
+	MINUS_EQ  reduce 31
+	PLUS_EQ  reduce 31
+	STAR_EQ  reduce 31
+	AND  reduce 31
+	PIPE  reduce 31
+	CIRC  reduce 31
+	RPAREN  reduce 31
+	LPAREN  reduce 31
+	RBRACKET  reduce 31
+	SEMICOLON  reduce 31
+	COMMA  reduce 31
+	SLASH_EQ  reduce 31
+	PERCENT_EQ  reduce 31
+	AND_EQ  reduce 31
+	PIPE_EQ  reduce 31
+	CIRC_EQ  reduce 31
+	INF_INF_EQ  reduce 31
+	SUP_SUP_EQ  reduce 31
+
+	argb  goto 115
+
+
+state 178
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	expression : expression SUP_EQ expression .  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 32
+	ARG_b  reduce 32
+	EQ  reduce 32
+	EQ_EQ  reduce 32
+	EXCLAM_EQ  reduce 32
+	INF  reduce 32
+	SUP  reduce 32
+	INF_EQ  reduce 32
+	SUP_EQ  reduce 32
+	MINUS_EQ  reduce 32
+	PLUS_EQ  reduce 32
+	STAR_EQ  reduce 32
+	AND  reduce 32
+	PIPE  reduce 32
+	CIRC  reduce 32
+	RPAREN  reduce 32
+	LPAREN  reduce 32
+	RBRACKET  reduce 32
+	SEMICOLON  reduce 32
+	COMMA  reduce 32
+	SLASH_EQ  reduce 32
+	PERCENT_EQ  reduce 32
+	AND_EQ  reduce 32
+	PIPE_EQ  reduce 32
+	CIRC_EQ  reduce 32
+	INF_INF_EQ  reduce 32
+	SUP_SUP_EQ  reduce 32
+
+	argb  goto 115
+
+
+state 179
+	expression : expression . PLUS expression  (16)
+	expression : expression PLUS expression .  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	$end  reduce 16
+	ARG_b  reduce 16
+	EQ  reduce 16
+	EQ_EQ  reduce 16
+	EXCLAM_EQ  reduce 16
+	INF  reduce 16
+	SUP  reduce 16
+	INF_EQ  reduce 16
+	SUP_EQ  reduce 16
+	MINUS_EQ  reduce 16
+	PLUS_EQ  reduce 16
+	STAR_EQ  reduce 16
+	PLUS  reduce 16
+	MINUS  reduce 16
+	AND  reduce 16
+	PIPE  reduce 16
+	CIRC  reduce 16
+	INF_INF  reduce 16
+	SUP_SUP  reduce 16
+	RPAREN  reduce 16
+	LPAREN  reduce 16
+	RBRACKET  reduce 16
+	SEMICOLON  reduce 16
+	COMMA  reduce 16
+	SLASH_EQ  reduce 16
+	PERCENT_EQ  reduce 16
+	AND_EQ  reduce 16
+	PIPE_EQ  reduce 16
+	CIRC_EQ  reduce 16
+	INF_INF_EQ  reduce 16
+	SUP_SUP_EQ  reduce 16
+
+	argb  goto 115
+
+
+state 180
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression MINUS expression .  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	$end  reduce 17
+	ARG_b  reduce 17
+	EQ  reduce 17
+	EQ_EQ  reduce 17
+	EXCLAM_EQ  reduce 17
+	INF  reduce 17
+	SUP  reduce 17
+	INF_EQ  reduce 17
+	SUP_EQ  reduce 17
+	MINUS_EQ  reduce 17
+	PLUS_EQ  reduce 17
+	STAR_EQ  reduce 17
+	PLUS  reduce 17
+	MINUS  reduce 17
+	AND  reduce 17
+	PIPE  reduce 17
+	CIRC  reduce 17
+	INF_INF  reduce 17
+	SUP_SUP  reduce 17
+	RPAREN  reduce 17
+	LPAREN  reduce 17
+	RBRACKET  reduce 17
+	SEMICOLON  reduce 17
+	COMMA  reduce 17
+	SLASH_EQ  reduce 17
+	PERCENT_EQ  reduce 17
+	AND_EQ  reduce 17
+	PIPE_EQ  reduce 17
+	CIRC_EQ  reduce 17
+	INF_INF_EQ  reduce 17
+	SUP_SUP_EQ  reduce 17
+
+	argb  goto 115
+
+
+state 181
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression STAR expression .  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 19
+	ARG_b  reduce 19
+	EQ  reduce 19
+	EQ_EQ  reduce 19
+	EXCLAM_EQ  reduce 19
+	INF  reduce 19
+	SUP  reduce 19
+	INF_EQ  reduce 19
+	SUP_EQ  reduce 19
+	MINUS_EQ  reduce 19
+	PLUS_EQ  reduce 19
+	STAR_EQ  reduce 19
+	PLUS  reduce 19
+	MINUS  reduce 19
+	STAR  reduce 19
+	SLASH  reduce 19
+	PERCENT  reduce 19
+	AND  reduce 19
+	PIPE  reduce 19
+	CIRC  reduce 19
+	INF_INF  reduce 19
+	SUP_SUP  reduce 19
+	RPAREN  reduce 19
+	LPAREN  reduce 19
+	RBRACKET  reduce 19
+	SEMICOLON  reduce 19
+	COMMA  reduce 19
+	SLASH_EQ  reduce 19
+	PERCENT_EQ  reduce 19
+	AND_EQ  reduce 19
+	PIPE_EQ  reduce 19
+	CIRC_EQ  reduce 19
+	INF_INF_EQ  reduce 19
+	SUP_SUP_EQ  reduce 19
+
+	argb  goto 115
+
+
+state 182
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression SLASH expression .  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 20
+	ARG_b  reduce 20
+	EQ  reduce 20
+	EQ_EQ  reduce 20
+	EXCLAM_EQ  reduce 20
+	INF  reduce 20
+	SUP  reduce 20
+	INF_EQ  reduce 20
+	SUP_EQ  reduce 20
+	MINUS_EQ  reduce 20
+	PLUS_EQ  reduce 20
+	STAR_EQ  reduce 20
+	PLUS  reduce 20
+	MINUS  reduce 20
+	STAR  reduce 20
+	SLASH  reduce 20
+	PERCENT  reduce 20
+	AND  reduce 20
+	PIPE  reduce 20
+	CIRC  reduce 20
+	INF_INF  reduce 20
+	SUP_SUP  reduce 20
+	RPAREN  reduce 20
+	LPAREN  reduce 20
+	RBRACKET  reduce 20
+	SEMICOLON  reduce 20
+	COMMA  reduce 20
+	SLASH_EQ  reduce 20
+	PERCENT_EQ  reduce 20
+	AND_EQ  reduce 20
+	PIPE_EQ  reduce 20
+	CIRC_EQ  reduce 20
+	INF_INF_EQ  reduce 20
+	SUP_SUP_EQ  reduce 20
+
+	argb  goto 115
+
+
+state 183
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression PERCENT expression .  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 21
+	ARG_b  reduce 21
+	EQ  reduce 21
+	EQ_EQ  reduce 21
+	EXCLAM_EQ  reduce 21
+	INF  reduce 21
+	SUP  reduce 21
+	INF_EQ  reduce 21
+	SUP_EQ  reduce 21
+	MINUS_EQ  reduce 21
+	PLUS_EQ  reduce 21
+	STAR_EQ  reduce 21
+	PLUS  reduce 21
+	MINUS  reduce 21
+	STAR  reduce 21
+	SLASH  reduce 21
+	PERCENT  reduce 21
+	AND  reduce 21
+	PIPE  reduce 21
+	CIRC  reduce 21
+	INF_INF  reduce 21
+	SUP_SUP  reduce 21
+	RPAREN  reduce 21
+	LPAREN  reduce 21
+	RBRACKET  reduce 21
+	SEMICOLON  reduce 21
+	COMMA  reduce 21
+	SLASH_EQ  reduce 21
+	PERCENT_EQ  reduce 21
+	AND_EQ  reduce 21
+	PIPE_EQ  reduce 21
+	CIRC_EQ  reduce 21
+	INF_INF_EQ  reduce 21
+	SUP_SUP_EQ  reduce 21
+
+	argb  goto 115
+
+
+state 184
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression AND expression .  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 24
+	ARG_b  reduce 24
+	EQ  reduce 24
+	MINUS_EQ  reduce 24
+	PLUS_EQ  reduce 24
+	STAR_EQ  reduce 24
+	AND  reduce 24
+	PIPE  reduce 24
+	CIRC  reduce 24
+	RPAREN  reduce 24
+	LPAREN  reduce 24
+	RBRACKET  reduce 24
+	SEMICOLON  reduce 24
+	COMMA  reduce 24
+	SLASH_EQ  reduce 24
+	PERCENT_EQ  reduce 24
+	AND_EQ  reduce 24
+	PIPE_EQ  reduce 24
+	CIRC_EQ  reduce 24
+	INF_INF_EQ  reduce 24
+	SUP_SUP_EQ  reduce 24
+
+	argb  goto 115
+
+
+state 185
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression PIPE expression .  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 25
+	ARG_b  reduce 25
+	EQ  reduce 25
+	MINUS_EQ  reduce 25
+	PLUS_EQ  reduce 25
+	STAR_EQ  reduce 25
+	PIPE  reduce 25
+	RPAREN  reduce 25
+	LPAREN  reduce 25
+	RBRACKET  reduce 25
+	SEMICOLON  reduce 25
+	COMMA  reduce 25
+	SLASH_EQ  reduce 25
+	PERCENT_EQ  reduce 25
+	AND_EQ  reduce 25
+	PIPE_EQ  reduce 25
+	CIRC_EQ  reduce 25
+	INF_INF_EQ  reduce 25
+	SUP_SUP_EQ  reduce 25
+
+	argb  goto 115
+
+
+state 186
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression CIRC expression .  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 26
+	ARG_b  reduce 26
+	EQ  reduce 26
+	MINUS_EQ  reduce 26
+	PLUS_EQ  reduce 26
+	STAR_EQ  reduce 26
+	PIPE  reduce 26
+	CIRC  reduce 26
+	RPAREN  reduce 26
+	LPAREN  reduce 26
+	RBRACKET  reduce 26
+	SEMICOLON  reduce 26
+	COMMA  reduce 26
+	SLASH_EQ  reduce 26
+	PERCENT_EQ  reduce 26
+	AND_EQ  reduce 26
+	PIPE_EQ  reduce 26
+	CIRC_EQ  reduce 26
+	INF_INF_EQ  reduce 26
+	SUP_SUP_EQ  reduce 26
+
+	argb  goto 115
+
+
+state 187
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression INF_INF expression .  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	$end  reduce 22
+	ARG_b  reduce 22
+	EQ  reduce 22
+	EQ_EQ  reduce 22
+	EXCLAM_EQ  reduce 22
+	INF  reduce 22
+	SUP  reduce 22
+	INF_EQ  reduce 22
+	SUP_EQ  reduce 22
+	MINUS_EQ  reduce 22
+	PLUS_EQ  reduce 22
+	STAR_EQ  reduce 22
+	AND  reduce 22
+	PIPE  reduce 22
+	CIRC  reduce 22
+	INF_INF  reduce 22
+	SUP_SUP  reduce 22
+	RPAREN  reduce 22
+	LPAREN  reduce 22
+	RBRACKET  reduce 22
+	SEMICOLON  reduce 22
+	COMMA  reduce 22
+	SLASH_EQ  reduce 22
+	PERCENT_EQ  reduce 22
+	AND_EQ  reduce 22
+	PIPE_EQ  reduce 22
+	CIRC_EQ  reduce 22
+	INF_INF_EQ  reduce 22
+	SUP_SUP_EQ  reduce 22
+
+	argb  goto 115
+
+
+state 188
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression SUP_SUP expression .  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	$end  reduce 23
+	ARG_b  reduce 23
+	EQ  reduce 23
+	EQ_EQ  reduce 23
+	EXCLAM_EQ  reduce 23
+	INF  reduce 23
+	SUP  reduce 23
+	INF_EQ  reduce 23
+	SUP_EQ  reduce 23
+	MINUS_EQ  reduce 23
+	PLUS_EQ  reduce 23
+	STAR_EQ  reduce 23
+	AND  reduce 23
+	PIPE  reduce 23
+	CIRC  reduce 23
+	INF_INF  reduce 23
+	SUP_SUP  reduce 23
+	RPAREN  reduce 23
+	LPAREN  reduce 23
+	RBRACKET  reduce 23
+	SEMICOLON  reduce 23
+	COMMA  reduce 23
+	SLASH_EQ  reduce 23
+	PERCENT_EQ  reduce 23
+	AND_EQ  reduce 23
+	PIPE_EQ  reduce 23
+	CIRC_EQ  reduce 23
+	INF_INF_EQ  reduce 23
+	SUP_SUP_EQ  reduce 23
+
+	argb  goto 115
+
+
+state 189
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression argb expression .  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	$end  reduce 18
+	ARG_b  reduce 18
+	EQ  reduce 18
+	MINUS_EQ  reduce 18
+	PLUS_EQ  reduce 18
+	STAR_EQ  reduce 18
+	RPAREN  reduce 18
+	LPAREN  reduce 18
+	RBRACKET  reduce 18
+	SEMICOLON  reduce 18
+	COMMA  reduce 18
+	SLASH_EQ  reduce 18
+	PERCENT_EQ  reduce 18
+	AND_EQ  reduce 18
+	PIPE_EQ  reduce 18
+	CIRC_EQ  reduce 18
+	INF_INF_EQ  reduce 18
+	SUP_SUP_EQ  reduce 18
+
+	argb  goto 115
+
+
+state 190
+	type_spec : UNSIGNED LONG LONG .  (65)
+
+	.  reduce 65
+
+
+state 191
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	type_spec : TYPEOF LPAREN expression . RPAREN  (70)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	RPAREN  shift 236
+	.  error
+
+	argb  goto 115
+
+
+state 192
+	attribute : ATTRIBUTE LPAREN . LPAREN attr RPAREN RPAREN  (94)
+
+	LPAREN  shift 237
+	.  error
+
+
+state 193
+	direct_decl : IDENT .  (74)
+
+	.  reduce 74
+
+
+state 194
+	decl : STAR . attributes decl  (71)
+	attributes : .  (88)
+
+	VOLATILE  shift 126
+	CONST  shift 127
+	RESTRICT  shift 128
+	ARG_A  shift 129
+	ATTRIBUTE  shift 130
+	$end  reduce 88
+	IDENT  reduce 88
+	EQ  reduce 88
+	STAR  reduce 88
+	RPAREN  reduce 88
+	LPAREN  reduce 88
+	LBRACKET  reduce 88
+	SEMICOLON  reduce 88
+	COMMA  reduce 88
+
+	attributes  goto 238
+	attribute  goto 132
+
+
+state 195
+	direct_decl : LPAREN . attributes decl RPAREN  (75)
+	direct_decl : LPAREN . attributes decl RPAREN LPAREN parameters RPAREN  (77)
+	attributes : .  (88)
+
+	VOLATILE  shift 126
+	CONST  shift 127
+	RESTRICT  shift 128
+	ARG_A  shift 129
+	ATTRIBUTE  shift 130
+	IDENT  reduce 88
+	STAR  reduce 88
+	RPAREN  reduce 88
+	LPAREN  reduce 88
+	LBRACKET  reduce 88
+
+	attributes  goto 239
+	attribute  goto 132
+
+
+state 196
+	one_formal : type_spec attributes decl .  (51)
+
+	.  reduce 51
+
+
+state 197
+	decl : direct_decl .  (72)
+	direct_decl : direct_decl . LBRACKET exp_opt RBRACKET  (76)
+
+	LBRACKET  shift 240
+	$end  reduce 72
+	EQ  reduce 72
+	RPAREN  reduce 72
+	SEMICOLON  reduce 72
+	COMMA  reduce 72
+
+
+state 198
+	attributes : attribute attributes .  (90)
+
+	.  reduce 90
+
+
+state 199
+	offset : DOT IDENT offset .  (48)
+
+	.  reduce 48
+
+
+state 200
+	offset : LBRACKET expression RBRACKET . offset  (49)
+	offset : .  (47)
+
+	ARG_o  shift 51
+	DOT  shift 52
+	LBRACKET  shift 53
+	$end  reduce 47
+	ARG_b  reduce 47
+	EQ  reduce 47
+	ARROW  reduce 47
+	EQ_EQ  reduce 47
+	EXCLAM_EQ  reduce 47
+	INF  reduce 47
+	SUP  reduce 47
+	INF_EQ  reduce 47
+	SUP_EQ  reduce 47
+	MINUS_EQ  reduce 47
+	PLUS_EQ  reduce 47
+	STAR_EQ  reduce 47
+	PLUS  reduce 47
+	MINUS  reduce 47
+	STAR  reduce 47
+	SLASH  reduce 47
+	PERCENT  reduce 47
+	AND  reduce 47
+	PIPE  reduce 47
+	CIRC  reduce 47
+	INF_INF  reduce 47
+	SUP_SUP  reduce 47
+	RPAREN  reduce 47
+	LPAREN  reduce 47
+	RBRACKET  reduce 47
+	SEMICOLON  reduce 47
+	COMMA  reduce 47
+	SLASH_EQ  reduce 47
+	PERCENT_EQ  reduce 47
+	AND_EQ  reduce 47
+	PIPE_EQ  reduce 47
+	CIRC_EQ  reduce 47
+	INF_INF_EQ  reduce 47
+	SUP_SUP_EQ  reduce 47
+
+	offset  goto 241
+
+
+state 201
+	instr : ASSERT LPAREN IDENT . COMMA CST_STRING RPAREN SEMICOLON  (111)
+
+	COMMA  shift 242
+	.  error
+
+
+state 202
+	instr : ASSERT LPAREN CST_STRING . RPAREN SEMICOLON  (113)
+
+	RPAREN  shift 243
+	.  error
+
+
+state 203
+	instr : ASSUME LPAREN IDENT . COMMA CST_STRING RPAREN SEMICOLON  (112)
+
+	COMMA  shift 244
+	.  error
+
+
+state 204
+	instr : ASSUME LPAREN CST_STRING . RPAREN SEMICOLON  (114)
+
+	RPAREN  shift 245
+	.  error
+
+
+state 205
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval EQ expression . SEMICOLON  (116)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 246
+	.  error
+
+	argb  goto 115
+
+
+state 206
+	expression : lval .  (4)
+	instr : lval EQ lval . LPAREN arguments RPAREN SEMICOLON  (127)
+
+	LPAREN  shift 247
+	ARG_b  reduce 4
+	ARROW  reduce 4
+	EQ_EQ  reduce 4
+	EXCLAM_EQ  reduce 4
+	INF  reduce 4
+	SUP  reduce 4
+	INF_EQ  reduce 4
+	SUP_EQ  reduce 4
+	PLUS  reduce 4
+	MINUS  reduce 4
+	STAR  reduce 4
+	SLASH  reduce 4
+	PERCENT  reduce 4
+	AND  reduce 4
+	PIPE  reduce 4
+	CIRC  reduce 4
+	INF_INF  reduce 4
+	SUP_SUP  reduce 4
+	SEMICOLON  reduce 4
+
+
+state 207
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval MINUS_EQ expression . SEMICOLON  (118)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 248
+	.  error
+
+	argb  goto 115
+
+
+state 208
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval PLUS_EQ expression . SEMICOLON  (117)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 249
+	.  error
+
+	argb  goto 115
+
+
+state 209
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval STAR_EQ expression . SEMICOLON  (119)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 250
+	.  error
+
+	argb  goto 115
+
+
+state 210
+	arguments_ne : ARG_E .  (134)
+
+	.  reduce 134
+
+
+state 211
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	arguments_ne : expression .  (133)
+	arguments_ne : expression . COMMA arguments_ne  (135)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	COMMA  shift 251
+	RPAREN  reduce 133
+
+	argb  goto 115
+
+
+state 212
+	instr : lval LPAREN arguments . RPAREN SEMICOLON  (128)
+
+	RPAREN  shift 252
+	.  error
+
+
+state 213
+	arguments : arguments_ne .  (132)
+
+	.  reduce 132
+
+
+state 214
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval SLASH_EQ expression . SEMICOLON  (120)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 253
+	.  error
+
+	argb  goto 115
+
+
+state 215
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval PERCENT_EQ expression . SEMICOLON  (121)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 254
+	.  error
+
+	argb  goto 115
+
+
+state 216
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval AND_EQ expression . SEMICOLON  (122)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 255
+	.  error
+
+	argb  goto 115
+
+
+state 217
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval PIPE_EQ expression . SEMICOLON  (123)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 256
+	.  error
+
+	argb  goto 115
+
+
+state 218
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval CIRC_EQ expression . SEMICOLON  (124)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 257
+	.  error
+
+	argb  goto 115
+
+
+state 219
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval INF_INF_EQ expression . SEMICOLON  (125)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 258
+	.  error
+
+	argb  goto 115
+
+
+state 220
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	instr : lval SUP_SUP_EQ expression . SEMICOLON  (126)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  shift 259
+	.  error
+
+	argb  goto 115
+
+
+state 221
+	instr : arglo lval LPAREN . arguments RPAREN SEMICOLON  (129)
+	arguments : .  (131)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_E  shift 210
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	RPAREN  reduce 131
+
+	expression  goto 211
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arguments  goto 260
+	arguments_ne  goto 213
+
+
+state 222
+	stmt : LBRACE stmt_list RBRACE .  (141)
+
+	.  reduce 141
+
+
+state 223
+	stmt : RETURN exp_opt SEMICOLON .  (138)
+
+	.  reduce 138
+
+
+state 224
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	stmt : WHILE LPAREN expression . RPAREN stmt  (142)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	RPAREN  shift 261
+	.  error
+
+	argb  goto 115
+
+
+state 225
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	stmt : IF LPAREN expression . RPAREN stmt  (136)
+	stmt : IF LPAREN expression . RPAREN stmt ELSE stmt  (137)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	RPAREN  shift 262
+	.  error
+
+	argb  goto 115
+
+
+state 226
+	stmt_list : type_spec attributes decl . maybe_init SEMICOLON stmt_list  (148)
+	maybe_init : .  (152)
+
+	EQ  shift 263
+	SEMICOLON  reduce 152
+
+	maybe_init  goto 264
+
+
+state 227
+	prepost_cond : PRECONDITION LPAREN IDENT . RPAREN COLON CST_STRING SEMICOLON  (107)
+
+	RPAREN  shift 265
+	.  error
+
+
+state 228
+	prepost_cond : PRECONDITION COLON CST_STRING . SEMICOLON  (108)
+
+	SEMICOLON  shift 266
+	.  error
+
+
+state 229
+	prepost_cond : POSTCONDITION LPAREN IDENT . RPAREN COLON CST_STRING SEMICOLON  (109)
+
+	RPAREN  shift 267
+	.  error
+
+
+state 230
+	prepost_cond : POSTCONDITION COLON CST_STRING . SEMICOLON  (110)
+
+	SEMICOLON  shift 268
+	.  error
+
+
+state 231
+	expression : SIZEOF LPAREN typename RPAREN .  (6)
+	expression : LPAREN typename RPAREN . expression  (33)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	TILDE  shift 25
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	$end  reduce 6
+	ARG_b  reduce 6
+	EQ  reduce 6
+	ARROW  reduce 6
+	EQ_EQ  reduce 6
+	EXCLAM_EQ  reduce 6
+	INF  reduce 6
+	SUP  reduce 6
+	INF_EQ  reduce 6
+	SUP_EQ  reduce 6
+	MINUS_EQ  reduce 6
+	PLUS_EQ  reduce 6
+	STAR_EQ  reduce 6
+	PLUS  reduce 6
+	MINUS  reduce 6
+	STAR  reduce 6
+	SLASH  reduce 6
+	PERCENT  reduce 6
+	AND  reduce 6
+	PIPE  reduce 6
+	CIRC  reduce 6
+	INF_INF  reduce 6
+	SUP_SUP  reduce 6
+	RPAREN  reduce 6
+	RBRACKET  reduce 6
+	SEMICOLON  reduce 6
+	COMMA  reduce 6
+	SLASH_EQ  reduce 6
+	PERCENT_EQ  reduce 6
+	AND_EQ  reduce 6
+	PIPE_EQ  reduce 6
+	CIRC_EQ  reduce 6
+	INF_INF_EQ  reduce 6
+	SUP_SUP_EQ  reduce 6
+
+	expression  goto 234
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 232
+	expression : ALIGNOF LPAREN typename RPAREN .  (8)
+	expression : LPAREN typename RPAREN . expression  (33)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	TILDE  shift 25
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	$end  reduce 8
+	ARG_b  reduce 8
+	EQ  reduce 8
+	ARROW  reduce 8
+	EQ_EQ  reduce 8
+	EXCLAM_EQ  reduce 8
+	INF  reduce 8
+	SUP  reduce 8
+	INF_EQ  reduce 8
+	SUP_EQ  reduce 8
+	MINUS_EQ  reduce 8
+	PLUS_EQ  reduce 8
+	STAR_EQ  reduce 8
+	PLUS  reduce 8
+	MINUS  reduce 8
+	STAR  reduce 8
+	SLASH  reduce 8
+	PERCENT  reduce 8
+	AND  reduce 8
+	PIPE  reduce 8
+	CIRC  reduce 8
+	INF_INF  reduce 8
+	SUP_SUP  reduce 8
+	RPAREN  reduce 8
+	RBRACKET  reduce 8
+	SEMICOLON  reduce 8
+	COMMA  reduce 8
+	SLASH_EQ  reduce 8
+	PERCENT_EQ  reduce 8
+	AND_EQ  reduce 8
+	PIPE_EQ  reduce 8
+	CIRC_EQ  reduce 8
+	INF_INF_EQ  reduce 8
+	SUP_SUP_EQ  reduce 8
+
+	expression  goto 234
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 233
+	lval : LPAREN STAR expression RPAREN . offset  (43)
+	offset : .  (47)
+
+	ARG_o  shift 51
+	DOT  shift 52
+	LBRACKET  shift 53
+	$end  reduce 47
+	ARG_b  reduce 47
+	EQ  reduce 47
+	ARROW  reduce 47
+	EQ_EQ  reduce 47
+	EXCLAM_EQ  reduce 47
+	INF  reduce 47
+	SUP  reduce 47
+	INF_EQ  reduce 47
+	SUP_EQ  reduce 47
+	MINUS_EQ  reduce 47
+	PLUS_EQ  reduce 47
+	STAR_EQ  reduce 47
+	PLUS  reduce 47
+	MINUS  reduce 47
+	STAR  reduce 47
+	SLASH  reduce 47
+	PERCENT  reduce 47
+	AND  reduce 47
+	PIPE  reduce 47
+	CIRC  reduce 47
+	INF_INF  reduce 47
+	SUP_SUP  reduce 47
+	RPAREN  reduce 47
+	LPAREN  reduce 47
+	RBRACKET  reduce 47
+	SEMICOLON  reduce 47
+	COMMA  reduce 47
+	SLASH_EQ  reduce 47
+	PERCENT_EQ  reduce 47
+	AND_EQ  reduce 47
+	PIPE_EQ  reduce 47
+	CIRC_EQ  reduce 47
+	INF_INF_EQ  reduce 47
+	SUP_SUP_EQ  reduce 47
+
+	offset  goto 269
+
+
+state 234
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	expression : LPAREN typename RPAREN expression .  (33)
+	lval : expression . ARROW IDENT offset  (42)
+
+	ARROW  shift 98
+	$end  reduce 33
+	ARG_b  reduce 33
+	EQ  reduce 33
+	EQ_EQ  reduce 33
+	EXCLAM_EQ  reduce 33
+	INF  reduce 33
+	SUP  reduce 33
+	INF_EQ  reduce 33
+	SUP_EQ  reduce 33
+	MINUS_EQ  reduce 33
+	PLUS_EQ  reduce 33
+	STAR_EQ  reduce 33
+	PLUS  reduce 33
+	MINUS  reduce 33
+	STAR  reduce 33
+	SLASH  reduce 33
+	PERCENT  reduce 33
+	AND  reduce 33
+	PIPE  reduce 33
+	CIRC  reduce 33
+	INF_INF  reduce 33
+	SUP_SUP  reduce 33
+	RPAREN  reduce 33
+	LPAREN  reduce 33
+	RBRACKET  reduce 33
+	SEMICOLON  reduce 33
+	COMMA  reduce 33
+	SLASH_EQ  reduce 33
+	PERCENT_EQ  reduce 33
+	AND_EQ  reduce 33
+	PIPE_EQ  reduce 33
+	CIRC_EQ  reduce 33
+	INF_INF_EQ  reduce 33
+	SUP_SUP_EQ  reduce 33
+
+	argb  goto 115
+
+
+state 235
+	lval : expression ARROW IDENT offset .  (42)
+
+	.  reduce 42
+
+
+state 236
+	type_spec : TYPEOF LPAREN expression RPAREN .  (70)
+
+	.  reduce 70
+
+
+state 237
+	attribute : ATTRIBUTE LPAREN LPAREN . attr RPAREN RPAREN  (94)
+
+	IDENT  shift 270
+	.  error
+
+	attr  goto 271
+
+
+state 238
+	decl : STAR attributes . decl  (71)
+	direct_decl : .  (73)
+
+	IDENT  shift 193
+	STAR  shift 194
+	LPAREN  shift 195
+	$end  reduce 73
+	EQ  reduce 73
+	RPAREN  reduce 73
+	LBRACKET  reduce 73
+	SEMICOLON  reduce 73
+	COMMA  reduce 73
+
+	decl  goto 272
+	direct_decl  goto 197
+
+
+state 239
+	direct_decl : LPAREN attributes . decl RPAREN  (75)
+	direct_decl : LPAREN attributes . decl RPAREN LPAREN parameters RPAREN  (77)
+	direct_decl : .  (73)
+
+	IDENT  shift 193
+	STAR  shift 194
+	LPAREN  shift 195
+	RPAREN  reduce 73
+	LBRACKET  reduce 73
+
+	decl  goto 273
+	direct_decl  goto 197
+
+
+state 240
+	direct_decl : direct_decl LBRACKET . exp_opt RBRACKET  (76)
+	exp_opt : .  (85)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_eo  shift 154
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	RBRACKET  reduce 85
+
+	expression  goto 155
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	exp_opt  goto 274
+
+
+state 241
+	offset : LBRACKET expression RBRACKET offset .  (49)
+
+	.  reduce 49
+
+
+state 242
+	instr : ASSERT LPAREN IDENT COMMA . CST_STRING RPAREN SEMICOLON  (111)
+
+	CST_STRING  shift 275
+	.  error
+
+
+state 243
+	instr : ASSERT LPAREN CST_STRING RPAREN . SEMICOLON  (113)
+
+	SEMICOLON  shift 276
+	.  error
+
+
+state 244
+	instr : ASSUME LPAREN IDENT COMMA . CST_STRING RPAREN SEMICOLON  (112)
+
+	CST_STRING  shift 277
+	.  error
+
+
+state 245
+	instr : ASSUME LPAREN CST_STRING RPAREN . SEMICOLON  (114)
+
+	SEMICOLON  shift 278
+	.  error
+
+
+state 246
+	instr : lval EQ expression SEMICOLON .  (116)
+
+	.  reduce 116
+
+
+state 247
+	instr : lval EQ lval LPAREN . arguments RPAREN SEMICOLON  (127)
+	arguments : .  (131)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_E  shift 210
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	RPAREN  reduce 131
+
+	expression  goto 211
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arguments  goto 279
+	arguments_ne  goto 213
+
+
+state 248
+	instr : lval MINUS_EQ expression SEMICOLON .  (118)
+
+	.  reduce 118
+
+
+state 249
+	instr : lval PLUS_EQ expression SEMICOLON .  (117)
+
+	.  reduce 117
+
+
+state 250
+	instr : lval STAR_EQ expression SEMICOLON .  (119)
+
+	.  reduce 119
+
+
+state 251
+	arguments_ne : expression COMMA . arguments_ne  (135)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_E  shift 210
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 211
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arguments_ne  goto 280
+
+
+state 252
+	instr : lval LPAREN arguments RPAREN . SEMICOLON  (128)
+
+	SEMICOLON  shift 281
+	.  error
+
+
+state 253
+	instr : lval SLASH_EQ expression SEMICOLON .  (120)
+
+	.  reduce 120
+
+
+state 254
+	instr : lval PERCENT_EQ expression SEMICOLON .  (121)
+
+	.  reduce 121
+
+
+state 255
+	instr : lval AND_EQ expression SEMICOLON .  (122)
+
+	.  reduce 122
+
+
+state 256
+	instr : lval PIPE_EQ expression SEMICOLON .  (123)
+
+	.  reduce 123
+
+
+state 257
+	instr : lval CIRC_EQ expression SEMICOLON .  (124)
+
+	.  reduce 124
+
+
+state 258
+	instr : lval INF_INF_EQ expression SEMICOLON .  (125)
+
+	.  reduce 125
+
+
+state 259
+	instr : lval SUP_SUP_EQ expression SEMICOLON .  (126)
+
+	.  reduce 126
+
+
+state 260
+	instr : arglo lval LPAREN arguments . RPAREN SEMICOLON  (129)
+
+	RPAREN  shift 282
+	.  error
+
+
+state 261
+	stmt : WHILE LPAREN expression RPAREN . stmt  (142)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	ASSERT  shift 59
+	ASSUME  shift 60
+	.  error
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 283
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 262
+	stmt : IF LPAREN expression RPAREN . stmt  (136)
+	stmt : IF LPAREN expression RPAREN . stmt ELSE stmt  (137)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	ASSERT  shift 59
+	ASSUME  shift 60
+	.  error
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 284
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 263
+	maybe_init : EQ . expression  (153)
+	maybe_init : EQ . lval LPAREN arguments RPAREN  (154)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	.  error
+
+	expression  goto 285
+	lval  goto 286
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+
+
+state 264
+	stmt_list : type_spec attributes decl maybe_init . SEMICOLON stmt_list  (148)
+
+	SEMICOLON  shift 287
+	.  error
+
+
+state 265
+	prepost_cond : PRECONDITION LPAREN IDENT RPAREN . COLON CST_STRING SEMICOLON  (107)
+
+	COLON  shift 288
+	.  error
+
+
+state 266
+	prepost_cond : PRECONDITION COLON CST_STRING SEMICOLON .  (108)
+
+	.  reduce 108
+
+
+state 267
+	prepost_cond : POSTCONDITION LPAREN IDENT RPAREN . COLON CST_STRING SEMICOLON  (109)
+
+	COLON  shift 289
+	.  error
+
+
+state 268
+	prepost_cond : POSTCONDITION COLON CST_STRING SEMICOLON .  (110)
+
+	.  reduce 110
+
+
+state 269
+	lval : LPAREN STAR expression RPAREN offset .  (43)
+
+	.  reduce 43
+
+
+state 270
+	attr : IDENT .  (95)
+	attr : IDENT . LPAREN attr_args_ne RPAREN  (96)
+
+	LPAREN  shift 290
+	RPAREN  reduce 95
+
+
+state 271
+	attribute : ATTRIBUTE LPAREN LPAREN attr . RPAREN RPAREN  (94)
+
+	RPAREN  shift 291
+	.  error
+
+
+state 272
+	decl : STAR attributes decl .  (71)
+
+	.  reduce 71
+
+
+state 273
+	direct_decl : LPAREN attributes decl . RPAREN  (75)
+	direct_decl : LPAREN attributes decl . RPAREN LPAREN parameters RPAREN  (77)
+
+	RPAREN  shift 292
+	.  error
+
+
+state 274
+	direct_decl : direct_decl LBRACKET exp_opt . RBRACKET  (76)
+
+	RBRACKET  shift 293
+	.  error
+
+
+state 275
+	instr : ASSERT LPAREN IDENT COMMA CST_STRING . RPAREN SEMICOLON  (111)
+
+	RPAREN  shift 294
+	.  error
+
+
+state 276
+	instr : ASSERT LPAREN CST_STRING RPAREN SEMICOLON .  (113)
+
+	.  reduce 113
+
+
+state 277
+	instr : ASSUME LPAREN IDENT COMMA CST_STRING . RPAREN SEMICOLON  (112)
+
+	RPAREN  shift 295
+	.  error
+
+
+state 278
+	instr : ASSUME LPAREN CST_STRING RPAREN SEMICOLON .  (114)
+
+	.  reduce 114
+
+
+state 279
+	instr : lval EQ lval LPAREN arguments . RPAREN SEMICOLON  (127)
+
+	RPAREN  shift 296
+	.  error
+
+
+state 280
+	arguments_ne : expression COMMA arguments_ne .  (135)
+
+	.  reduce 135
+
+
+state 281
+	instr : lval LPAREN arguments RPAREN SEMICOLON .  (128)
+
+	.  reduce 128
+
+
+state 282
+	instr : arglo lval LPAREN arguments RPAREN . SEMICOLON  (129)
+
+	SEMICOLON  shift 297
+	.  error
+
+
+state 283
+	stmt : WHILE LPAREN expression RPAREN stmt .  (142)
+
+	.  reduce 142
+
+
+state 284
+	stmt : IF LPAREN expression RPAREN stmt .  (136)
+	stmt : IF LPAREN expression RPAREN stmt . ELSE stmt  (137)
+
+	ELSE  shift 298
+	$end  reduce 136
+	IDENT  reduce 136
+	CST_INT  reduce 136
+	CHAR  reduce 136
+	INT  reduce 136
+	DOUBLE  reduce 136
+	FLOAT  reduce 136
+	VOID  reduce 136
+	STRUCT  reduce 136
+	UNION  reduce 136
+	UNSIGNED  reduce 136
+	LONG  reduce 136
+	SHORT  reduce 136
+	ARG_e  reduce 136
+	ARG_u  reduce 136
+	ARG_t  reduce 136
+	ARG_d  reduce 136
+	ARG_lo  reduce 136
+	ARG_l  reduce 136
+	ARG_i  reduce 136
+	ARG_v  reduce 136
+	ARG_k  reduce 136
+	ARG_s  reduce 136
+	ARG_I  reduce 136
+	ARG_S  reduce 136
+	ARG_g  reduce 136
+	SIZEOF  reduce 136
+	ALIGNOF  reduce 136
+	PLUS  reduce 136
+	MINUS  reduce 136
+	STAR  reduce 136
+	TILDE  reduce 136
+	AND  reduce 136
+	EXCLAM  reduce 136
+	LPAREN  reduce 136
+	RBRACE  reduce 136
+	LBRACE  reduce 136
+	BREAK  reduce 136
+	CONTINUE  reduce 136
+	RETURN  reduce 136
+	WHILE  reduce 136
+	IF  reduce 136
+	TYPEOF  reduce 136
+	ASSERT  reduce 136
+	ASSUME  reduce 136
+
+
+state 285
+	expression : expression . PLUS expression  (16)
+	expression : expression . MINUS expression  (17)
+	expression : expression . argb expression  (18)
+	expression : expression . STAR expression  (19)
+	expression : expression . SLASH expression  (20)
+	expression : expression . PERCENT expression  (21)
+	expression : expression . INF_INF expression  (22)
+	expression : expression . SUP_SUP expression  (23)
+	expression : expression . AND expression  (24)
+	expression : expression . PIPE expression  (25)
+	expression : expression . CIRC expression  (26)
+	expression : expression . EQ_EQ expression  (27)
+	expression : expression . EXCLAM_EQ expression  (28)
+	expression : expression . INF expression  (29)
+	expression : expression . SUP expression  (30)
+	expression : expression . INF_EQ expression  (31)
+	expression : expression . SUP_EQ expression  (32)
+	lval : expression . ARROW IDENT offset  (42)
+	maybe_init : EQ expression .  (153)
+
+	ARG_b  shift 97
+	ARROW  shift 98
+	EQ_EQ  shift 99
+	EXCLAM_EQ  shift 100
+	INF  shift 101
+	SUP  shift 102
+	INF_EQ  shift 103
+	SUP_EQ  shift 104
+	PLUS  shift 105
+	MINUS  shift 106
+	STAR  shift 107
+	SLASH  shift 108
+	PERCENT  shift 109
+	AND  shift 110
+	PIPE  shift 111
+	CIRC  shift 112
+	INF_INF  shift 113
+	SUP_SUP  shift 114
+	SEMICOLON  reduce 153
+
+	argb  goto 115
+
+
+state 286
+	expression : lval .  (4)
+	maybe_init : EQ lval . LPAREN arguments RPAREN  (154)
+
+	LPAREN  shift 299
+	ARG_b  reduce 4
+	ARROW  reduce 4
+	EQ_EQ  reduce 4
+	EXCLAM_EQ  reduce 4
+	INF  reduce 4
+	SUP  reduce 4
+	INF_EQ  reduce 4
+	SUP_EQ  reduce 4
+	PLUS  reduce 4
+	MINUS  reduce 4
+	STAR  reduce 4
+	SLASH  reduce 4
+	PERCENT  reduce 4
+	AND  reduce 4
+	PIPE  reduce 4
+	CIRC  reduce 4
+	INF_INF  reduce 4
+	SUP_SUP  reduce 4
+	SEMICOLON  reduce 4
+
+
+state 287
+	stmt_list : type_spec attributes decl maybe_init SEMICOLON . stmt_list  (148)
+	stmt_list : .  (145)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_t  shift 44
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_k  shift 46
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_S  shift 75
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	TYPEOF  shift 47
+	ASSERT  shift 59
+	ASSUME  shift 60
+	$end  reduce 145
+	RBRACE  reduce 145
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 76
+	stmt_list  goto 300
+	constant  goto 31
+	type_spec  goto 78
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 288
+	prepost_cond : PRECONDITION LPAREN IDENT RPAREN COLON . CST_STRING SEMICOLON  (107)
+
+	CST_STRING  shift 301
+	.  error
+
+
+state 289
+	prepost_cond : POSTCONDITION LPAREN IDENT RPAREN COLON . CST_STRING SEMICOLON  (109)
+
+	CST_STRING  shift 302
+	.  error
+
+
+state 290
+	attr : IDENT LPAREN . attr_args_ne RPAREN  (96)
+
+	IDENT  shift 303
+	ARG_p  shift 304
+	ARG_P  shift 305
+	.  error
+
+	attr_args_ne  goto 306
+	attr_arg  goto 307
+
+
+state 291
+	attribute : ATTRIBUTE LPAREN LPAREN attr RPAREN . RPAREN  (94)
+
+	RPAREN  shift 308
+	.  error
+
+
+state 292
+	direct_decl : LPAREN attributes decl RPAREN .  (75)
+	direct_decl : LPAREN attributes decl RPAREN . LPAREN parameters RPAREN  (77)
+
+	LPAREN  shift 309
+	$end  reduce 75
+	EQ  reduce 75
+	RPAREN  reduce 75
+	LBRACKET  reduce 75
+	SEMICOLON  reduce 75
+	COMMA  reduce 75
+
+
+state 293
+	direct_decl : direct_decl LBRACKET exp_opt RBRACKET .  (76)
+
+	.  reduce 76
+
+
+state 294
+	instr : ASSERT LPAREN IDENT COMMA CST_STRING RPAREN . SEMICOLON  (111)
+
+	SEMICOLON  shift 310
+	.  error
+
+
+state 295
+	instr : ASSUME LPAREN IDENT COMMA CST_STRING RPAREN . SEMICOLON  (112)
+
+	SEMICOLON  shift 311
+	.  error
+
+
+state 296
+	instr : lval EQ lval LPAREN arguments RPAREN . SEMICOLON  (127)
+
+	SEMICOLON  shift 312
+	.  error
+
+
+state 297
+	instr : arglo lval LPAREN arguments RPAREN SEMICOLON .  (129)
+
+	.  reduce 129
+
+
+state 298
+	stmt : IF LPAREN expression RPAREN stmt ELSE . stmt  (137)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_lo  shift 57
+	ARG_l  shift 17
+	ARG_i  shift 58
+	ARG_v  shift 18
+	ARG_s  shift 64
+	ARG_I  shift 65
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	LBRACE  shift 66
+	BREAK  shift 67
+	CONTINUE  shift 68
+	RETURN  shift 69
+	WHILE  shift 70
+	IF  shift 71
+	ASSERT  shift 59
+	ASSUME  shift 60
+	.  error
+
+	expression  goto 55
+	lval  goto 61
+	instr  goto 72
+	stmt  goto 313
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arglo  goto 63
+	instr_list  goto 74
+
+
+state 299
+	maybe_init : EQ lval LPAREN . arguments RPAREN  (154)
+	arguments : .  (131)
+
+	IDENT  shift 12
+	CST_INT  shift 13
+	ARG_e  shift 14
+	ARG_E  shift 210
+	ARG_u  shift 15
+	ARG_d  shift 16
+	ARG_l  shift 17
+	ARG_v  shift 18
+	ARG_g  shift 19
+	SIZEOF  shift 20
+	ALIGNOF  shift 21
+	PLUS  shift 22
+	MINUS  shift 23
+	STAR  shift 24
+	TILDE  shift 25
+	AND  shift 26
+	EXCLAM  shift 27
+	LPAREN  shift 28
+	RPAREN  reduce 131
+
+	expression  goto 211
+	lval  goto 30
+	constant  goto 31
+	argu  goto 32
+	argv  goto 33
+	arguments  goto 314
+	arguments_ne  goto 213
+
+
+state 300
+	stmt_list : type_spec attributes decl maybe_init SEMICOLON stmt_list .  (148)
+
+	.  reduce 148
+
+
+state 301
+	prepost_cond : PRECONDITION LPAREN IDENT RPAREN COLON CST_STRING . SEMICOLON  (107)
+
+	SEMICOLON  shift 315
+	.  error
+
+
+state 302
+	prepost_cond : POSTCONDITION LPAREN IDENT RPAREN COLON CST_STRING . SEMICOLON  (109)
+
+	SEMICOLON  shift 316
+	.  error
+
+
+state 303
+	attr_arg : IDENT .  (100)
+	attr_arg : IDENT . LPAREN attr_args_ne RPAREN  (101)
+
+	LPAREN  shift 317
+	RPAREN  reduce 100
+	COMMA  reduce 100
+
+
+state 304
+	attr_arg : ARG_p .  (102)
+
+	.  reduce 102
+
+
+state 305
+	attr_args_ne : ARG_P .  (99)
+
+	.  reduce 99
+
+
+state 306
+	attr : IDENT LPAREN attr_args_ne . RPAREN  (96)
+
+	RPAREN  shift 318
+	.  error
+
+
+state 307
+	attr_args_ne : attr_arg .  (97)
+	attr_args_ne : attr_arg . COMMA attr_args_ne  (98)
+
+	COMMA  shift 319
+	RPAREN  reduce 97
+
+
+state 308
+	attribute : ATTRIBUTE LPAREN LPAREN attr RPAREN RPAREN .  (94)
+
+	.  reduce 94
+
+
+state 309
+	direct_decl : LPAREN attributes decl RPAREN LPAREN . parameters RPAREN  (77)
+	parameters : .  (78)
+
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_t  shift 44
+	ARG_va  shift 320
+	ARG_f  shift 45
+	ARG_F  shift 321
+	ARG_k  shift 46
+	ELLIPSIS  shift 322
+	TYPEOF  shift 47
+	RPAREN  reduce 78
+
+	type_spec  goto 49
+	parameters  goto 323
+	one_formal  goto 324
+	parameters_ne  goto 325
+
+
+state 310
+	instr : ASSERT LPAREN IDENT COMMA CST_STRING RPAREN SEMICOLON .  (111)
+
+	.  reduce 111
+
+
+state 311
+	instr : ASSUME LPAREN IDENT COMMA CST_STRING RPAREN SEMICOLON .  (112)
+
+	.  reduce 112
+
+
+state 312
+	instr : lval EQ lval LPAREN arguments RPAREN SEMICOLON .  (127)
+
+	.  reduce 127
+
+
+state 313
+	stmt : IF LPAREN expression RPAREN stmt ELSE stmt .  (137)
+
+	.  reduce 137
+
+
+state 314
+	maybe_init : EQ lval LPAREN arguments . RPAREN  (154)
+
+	RPAREN  shift 326
+	.  error
+
+
+state 315
+	prepost_cond : PRECONDITION LPAREN IDENT RPAREN COLON CST_STRING SEMICOLON .  (107)
+
+	.  reduce 107
+
+
+state 316
+	prepost_cond : POSTCONDITION LPAREN IDENT RPAREN COLON CST_STRING SEMICOLON .  (109)
+
+	.  reduce 109
+
+
+state 317
+	attr_arg : IDENT LPAREN . attr_args_ne RPAREN  (101)
+
+	IDENT  shift 303
+	ARG_p  shift 304
+	ARG_P  shift 305
+	.  error
+
+	attr_args_ne  goto 327
+	attr_arg  goto 307
+
+
+state 318
+	attr : IDENT LPAREN attr_args_ne RPAREN .  (96)
+
+	.  reduce 96
+
+
+state 319
+	attr_args_ne : attr_arg COMMA . attr_args_ne  (98)
+
+	IDENT  shift 303
+	ARG_p  shift 304
+	ARG_P  shift 305
+	.  error
+
+	attr_args_ne  goto 328
+	attr_arg  goto 307
+
+
+state 320
+	parameters_ne : ARG_va .  (81)
+
+	.  reduce 81
+
+
+state 321
+	parameters_ne : ARG_F .  (82)
+
+	.  reduce 82
+
+
+state 322
+	parameters_ne : ELLIPSIS .  (80)
+
+	.  reduce 80
+
+
+state 323
+	direct_decl : LPAREN attributes decl RPAREN LPAREN parameters . RPAREN  (77)
+
+	RPAREN  shift 329
+	.  error
+
+
+state 324
+	parameters_ne : one_formal .  (83)
+	parameters_ne : one_formal . COMMA parameters_ne  (84)
+
+	COMMA  shift 330
+	RPAREN  reduce 83
+
+
+state 325
+	parameters : parameters_ne .  (79)
+
+	.  reduce 79
+
+
+state 326
+	maybe_init : EQ lval LPAREN arguments RPAREN .  (154)
+
+	.  reduce 154
+
+
+state 327
+	attr_arg : IDENT LPAREN attr_args_ne . RPAREN  (101)
+
+	RPAREN  shift 331
+	.  error
+
+
+state 328
+	attr_args_ne : attr_arg COMMA attr_args_ne .  (98)
+
+	.  reduce 98
+
+
+state 329
+	direct_decl : LPAREN attributes decl RPAREN LPAREN parameters RPAREN .  (77)
+
+	.  reduce 77
+
+
+state 330
+	parameters_ne : one_formal COMMA . parameters_ne  (84)
+
+	CHAR  shift 34
+	INT  shift 35
+	DOUBLE  shift 36
+	FLOAT  shift 37
+	VOID  shift 38
+	STRUCT  shift 39
+	UNION  shift 40
+	UNSIGNED  shift 41
+	LONG  shift 42
+	SHORT  shift 43
+	ARG_t  shift 44
+	ARG_va  shift 320
+	ARG_f  shift 45
+	ARG_F  shift 321
+	ARG_k  shift 46
+	ELLIPSIS  shift 322
+	TYPEOF  shift 47
+	.  error
+
+	type_spec  goto 49
+	one_formal  goto 324
+	parameters_ne  goto 332
+
+
+state 331
+	attr_arg : IDENT LPAREN attr_args_ne RPAREN .  (101)
+
+	.  reduce 101
+
+
+state 332
+	parameters_ne : one_formal COMMA parameters_ne .  (84)
+
+	.  reduce 84
+
+
+State 72 contains 2 shift/reduce conflicts.
+
+
+147 terminals, 34 nonterminals
+164 grammar rules, 333 states

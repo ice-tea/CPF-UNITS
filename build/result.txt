@@ -1,0 +1,20 @@
+		     \||||||||||||||||||/
+		   --- Welcome to Maude ---
+		     /||||||||||||||||||\
+	    Maude 2.6 built: Dec  9 2010 18:28:39
+	    Copyright 1997-2010 SRI International
+		   Mon Jun  9 09:36:21 2014
+Maude> ==========================================
+reduce in CHECK-UNITS : check("main", 
+#CPFLine 7 decl(int, did(n('num2))) decl(int, did(n('num1))) decl(struct n('A),
+    did(n('aA))) {
+#CPFLine 9 #CPFCheckpoint 
+#CPFLine 9 (n('num2) = i(8)) ; 
+#CPFLine 9 #CPFAssume(n('UNITS),@unit(n('num2)) = $m); 
+#CPFLine 11 (n('num1) = i(10)) ; 
+#CPFLine 12 #CPFAssume(n('UNITS),@unit(n('aA) . n('a)) = $km); 
+#CPFLine 13 (n('num1) = (n('num2) + (n('aA) . n('a)))) ; 
+#CPFLine 14 return i(0) ;}, struct n('A){sdwrap(int, did(n('a)))}) .
+rewrites: 1356 in 16ms cpu (16ms real) (84750 rewrites/second)
+result StringList: "Function main: ","ERROR on line 13(1): Unit violation detected in addition operation, incompatible units.","Environments created = 1"
+Maude> Bye.

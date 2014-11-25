@@ -1,0 +1,533 @@
+#!/usr/bin/perl
+use Getopt::Long;
+
+#
+# Turn off auto abbreviations, so we can control them if we want to.
+#
+Getopt::Long::Configure("no_auto_abbrev");
+
+#
+# Options can be specified here. "exec|e" allows command-line args of
+# the form -e, -exec, --exec, and --e.
+#
+# Current options are:
+# -- default         Specify which analysis is the default analysis
+#
+GetOptions("default|d=s"=>\$default_analysis,
+           "help|?"=>\$help_flag);
+
+#
+# Check to see if the user wants a usage message -- if so, print one and exit
+#
+if ($help_flag) {
+  usage();
+  exit;
+}
+
+#
+# Grab back the name of the program file -- this is needed for all cases
+# except --help, which is handled above (and which doesn't check)
+#
+if ($ARGV[0]) {
+  $c_prog = $ARGV[0];
+} else {
+  print STDERR "Error: A C program file must be specified on the command line.\nUse --help or -? for usage.\n";
+  exit;
+}
+
+#
+# Verify the specified program exists.
+#
+if (! (-e $c_prog)) {
+  print STDERR "Source file $c_prog not found\n";
+  exit;
+}
+
+#
+# Open the file; we will process it line by line, looking for our
+# annotation comments.
+#
+open CSOURCE, "< $c_prog" or die "Cannot open file $c_prog\n";
+
+#
+# Open the destination file name.
+#
+open CDEST, "> $c_prog.embed" or die "Cannot open output file $c_prog.embed\n";
+
+#
+# Set up the lists we will use to track pre- and post-conditions.
+#
+@preconds = ();
+@postconds = ();
+@modifies = ();
+@tinvariants = ();
+
+#
+# $funflag keeps track of whether we should be looking for the start of a function;
+# this is used after finding pre- or post-condition comments so we know where to
+# insert the actual pre- and post-condition code.
+$funflag = 0;
+
+#
+# Now, process the C source file
+#
+while ($line = <CSOURCE>) {
+  # Check for annotation comments. For now, keep it simple -- assume only one annotation comment 
+  # on any given line. Assertions and assumptions are replaced inline, since they could be embedded
+  # in the middle of code, like <code> /*@ assume */ <more code>. Conditions with the system defined
+  # should be checked for first, since if not the regex for conditions with no system defined will
+  # also match because the : is optional, meaning the system would be seen as part of the condition.
+
+
+  # $ppflag marks if we are scanning a pre- or post-condition. Since they are always before a function
+  # declaration or definition, this lets us know that if we find a { or ; on the line after we stopped
+  # scanning conditions that this is the ; or { at the end of the function header.
+  $ppflag = 0;
+
+  # Keep track of changed output text.
+  $outline = "";
+
+  # Preconditions, /*@ and //@ style comments, system defined
+  if ($line =~ m/^\s*\/\*\@\s*pre\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found pre with system $1, memory = $3, leftover = $5\n";
+    push @preconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*pre\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found pre with system $1, memory = $3\n";
+    push @preconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*precondition\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found pre with system $1, memory = $3, leftover = $5\n";
+    push @preconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*precondition\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found pre with system $1, memory = $3\n";
+    push @preconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Preconditions, /*@ and //@ style comments, no system defined
+  elsif ($line =~ m/^\s*\/\*\@\s*pre(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found pre with memory = $2, leftover = $4\n";
+    push @preconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*pre(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found pre with memory = $2\n";
+    push @preconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*precondition(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found pre with memory = $2, leftover = $4\n";
+    push @preconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*precondition(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found pre with memory = $2\n";
+    push @preconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Postconditions, /*@ and //@ style comments, system defined
+  elsif ($line =~ m/^\s*\/\*\@\s*post\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found post with system $1, memory = $3, leftover = $5\n";
+    push @postconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*post\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found post with system $1, memory = $3\n";
+    push @postconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*postcondition\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found post with system $1, memory = $3, leftover = $5\n";
+    push @postconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*postcondition\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found post with system $1, memory = $3\n";
+    push @postconds, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Postconditions, /*@ and //@ style comments, no system defined
+  elsif ($line =~ m/^\s*\/\*\@\s*post(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found post with memory = $2, leftover = $4\n";
+    push @postconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*post\s*(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found post with memory = $2\n";
+    push @postconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*postcondition(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found post with memory = $2, leftover = $4\n";
+    push @postconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*postcondition(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found post with memory = $2\n";
+    push @postconds, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Modifies, /*@ and //@ style comments, system defined
+  if ($line =~ m/^\s*\/\*\@\s*modifies\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found mod with system $1, memory = $3, leftover = $5\n";
+    push @modifies, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*modifies\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found mod with system $1, memory = $3\n";
+    push @modifies, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*mod\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found mod with system $1, memory = $3, leftover = $5\n";
+    push @modifies, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*mod\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found mod with system $1, memory = $3\n";
+    push @modifies, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Modifies, /*@ and //@ style comments, no system defined
+  elsif ($line =~ m/^\s*\/\*\@\s*modifies(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found mod with memory = $2, leftover = $4\n";
+    push @modifies, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*modifies(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found mod with memory = $2\n";
+    push @modifies, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*mod(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found mod with memory = $2, leftover = $4\n";
+    push @modifies, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*mod(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found mod with memory = $2\n";
+    push @modifies, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Type invariant, /*@ and //@ style comments, system defined
+  if ($line =~ m/^\s*\/\*\@\s*tinv\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found tinv with system $1, memory = $3, leftover = $5\n";
+    push @tinvariants, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*tinv\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found tinv with system $1, memory = $3\n";
+    push @tinvariants, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*tinvariant\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found tinv with system $1, memory = $3, leftover = $5\n";
+    push @tinvariants, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*tinvariant\s*\(([^\)]+)\)(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found tinv with system $1, memory = $3\n";
+    push @tinvariants, [ $1, $3 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Type invariant, /*@ and //@ style comments, no system defined
+  elsif ($line =~ m/^\s*\/\*\@\s*tinv(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found tinv with memory = $2, leftover = $4\n";
+    push @tinvariants, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*tinv(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found tinv with memory = $2\n";
+    push @tinvariants, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\*\@\s*tinvariant(\:?)\s*(([^\*]|\*[^\/])*)(.*)$/i) {
+    #print STDOUT "Found tinv with memory = $2, leftover = $4\n";
+    push @tinvariants, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+  elsif ($line =~ m/^\s*\/\/\@\s*tinvariant(\:?)\s*(.*)$/i) {
+    #print STDOUT "Found tinv with memory = $2\n";
+    push @tinvariants, [ $default_analysis, $2 ];
+    $funflag = 1;
+    $ppflag = 1;
+  }
+
+  # Put the pre- and post-conditions into our own C syntax, to be handled by CIL.
+  # These go after the function header but before the ; or { character. Try to
+  # maintain line numbers, so the error reports we get back from our analysis
+  # will still make sense.
+  #
+  # NOTE: To make this work with structures, the order of the two regexp tests
+  # in the second if below is important. If they are reversed, any annotations
+  # will be put after the { but before the first ; (i.e, before the ; which
+  # terminates the first field definition).
+  if ($funflag == 1 && $ppflag == 0) {
+    if ($line =~ m/^([^{]*)([{])(.*)$/i || $line =~ m/^([^\;]*)(\;)(.*)$/i) {
+      if ($2 eq ";") {
+	print STDOUT "Found prototype of $1, then ;, then $3\n";
+      } else {
+	print STDOUT "Found definition of $1, then {, then $3\n";
+      }
+      # Print out the pre and post conditions and clear out the pre/post lists
+      $outline = $1;
+      if ($1 ne "") {
+	$outline = $outline . " ";
+      }
+
+      $first = 1;
+
+      foreach $pre (@preconds) {
+	if ($first != 1) {
+	  $outline = $outline . " ";
+	} else {
+	  $first = 0;
+	}
+	$outline = $outline . "precondition(" . $pre->[0] . "," . '"' . rtrim($pre->[1]) . '"' . ")";
+      }
+
+      foreach $post (@postconds) {
+	if ($first != 1) {
+	  $outline = $outline . " ";
+	} else {
+	  $first = 0;
+	}
+	$outline = $outline . "postcondition(" . $post->[0] . "," . '"' . rtrim($post->[1]) . '"' . ")";
+      }
+
+      foreach $mod (@modifies) {
+	if ($first != 1) {
+	  $outline = $outline . " ";
+	} else {
+	  $first = 0;
+	}
+	$outline = $outline . "modifies(" . $mod->[0] . "," . '"' . rtrim($mod->[1]) . '"' . ")";
+      }
+
+      foreach $tinv (@tinvariants) {
+	if ($first != 1) {
+	  $outline = $outline . " ";
+	} else {
+	  $first = 0;
+	}
+	$outline = $outline . "tinvariant(" . $tinv->[0] . "," . '"' . rtrim($tinv->[1]) . '"' . ")";
+      }
+
+      $outline = $outline . $2 . $3 . "\n";
+
+      @preconds = (); @postconds = ();
+      $funflag = 0;
+    }
+  }
+
+  # Asserts, /*@ and //@ style comments, system defined
+  elsif ($line =~ s/\/\*\@\s*assert\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssert\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assert with system $1, memory = $3, leftover = $5\n";
+    #$outline = "___CPFAssert(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assert\s*\(([^\)]+)\)(\:?)\s*(.*)$/___CPFAssert\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assert with system $1, memory = $3\n";
+    #$outline = "___CPFAssert(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\*\@\s*assert\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssert\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assert with system $1, memory = $3, leftover = $5\n";
+    #$outline = "___CPFAssert(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assert\s*\(([^\)]+)\)(\:?)\s*(.*)$/___CPFAssert\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assert with system $1, memory = $3\n";
+    #$outline = "___CPFAssert(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+
+  # Asserts, /*@ and //@ style comments, no system defined
+  if ($line =~ s/\/\*\@\s*assert(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssert\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assert with memory = $2, leftover = $4\n";
+    #$outline = "___CPFAssert(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assert(\:?)\s*(.*)$/___CPFAssert\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assert with memory = $2\n";
+    #$outline = "___CPFAssert(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\*\@\s*assert(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssert\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assert with memory = $2, leftover = $4\n";
+    #$outline = "___CPFAssert(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assert(\:?)\s*(.*)$/___CPFAssert\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assert with memory = $2\n";
+    #$outline = "___CPFAssert(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+
+  # Assumes, /*@ and //@ style comments, system defined
+  elsif ($line =~ s/\/\*\@\s*assume\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssume\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assume with system $1, memory = $3, leftover = $5\n";
+    #$outline = "___CPFAssume(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assume\s*\(([^\)]+)\)(\:?)\s*(.*)$/___CPFAssume\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assume with system $1, memory = $3\n";
+    #$outline = "___CPFAssume(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\*\@\s*assume\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssume\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assume with system $1, memory = $3, leftover = $5\n";
+    #$outline = "___CPFAssume(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assume\s*\(([^\)]+)\)(\:?)\s*(.*)$/___CPFAssume\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found assume with system $1, memory = $3\n";
+    #$outline = "___CPFAssume(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+
+  # Assumes, /*@ and //@ style comments, no system defined
+  elsif ($line =~ s/\/\*\@\s*assume(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssume\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assume with memory = $2, leftover = $4\n";
+    #$outline = "___CPFAssume(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assume(\:?)\s*(.*)$/___CPFAssume\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assume with memory = $2\n";
+    #$outline = "___CPFAssume(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\*\@\s*assume(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFAssume\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assume with memory = $2, leftover = $4\n";
+    #$outline = "___CPFAssume(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*assume(\:?)\s*(.*)$/___CPFAssume\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found assume with memory = $2\n";
+    #$outline = "___CPFAssume(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+
+  # Invariants, /*@ and //@ style comments, system defined
+  elsif ($line =~ s/\/\*\@\s*invariant\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFInvariant\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found invariant with system $1, memory = $3, leftover = $5\n";
+    #$outline = "___CPFInvariant(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*invariant\s*\(([^\)]+)\)(\:?)\s*(.*)$/___CPFInvariant\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found invariant with system $1, memory = $3\n";
+    #$outline = "___CPFInvariant(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\*\@\s*invariant\s*\(([^\)]+)\)(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFInvariant\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found invariant with system $1, memory = $3, leftover = $5\n";
+    #$outline = "___CPFInvariant(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*invariant\s*\(([^\)]+)\)(\:?)\s*(.*)$/___CPFInvariant\($1,\"$3\"\)\;/i) {
+    #print STDOUT "Found invariant with system $1, memory = $3\n";
+    #$outline = "___CPFInvariant(" . $1 . "," . '"' . $2 . '"' . ");\n";
+  }
+
+  # Invariants, /*@ and //@ style comments, no system defined
+  elsif ($line =~ s/\/\*\@\s*invariant(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFInvariant\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found invariant with memory = $2, leftover = $4\n";
+    #$outline = "___CPFInvariant(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*invariant(\:?)\s*(.*)$/___CPFInvariant\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found invariant with memory = $2\n";
+    #$outline = "___CPFInvariant(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\*\@\s*invariant(\:?)\s*(([^\*]|\*[^\/])*)\*\//___CPFInvariant\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found invariant with memory = $2, leftover = $4\n";
+    #$outline = "___CPFInvariant(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+  elsif ($line =~ s/\/\/\@\s*invariant(\:?)\s*(.*)$/___CPFInvariant\($default_analysis,\"$2\"\)\;/i) {
+    #print STDOUT "Found invariant with memory = $2\n";
+    #$outline = "___CPFInvariant(" . $default_analysis . "," . '"' . $1 . '"' . ");\n";
+  }
+
+  # If we didn't write anything into $outline yet, just copy in the $line, so we can always just
+  # output $outline. This will usually be the case (it will be on any standard lines of C code).
+  if ($outline eq "") {
+    $outline = $line;
+  }
+
+  # Don't output pre- and post-condition comment lines. Since we are adding the pre- and post-conditions
+  # to the functions, dropping the comment lines helps us keep the same line numbers as we start with; only
+  # the first line number for the function header should change.
+  #if ($ppflag == 0) {
+    print CDEST $outline;
+  #}
+}
+
+print CDEST "\n";
+
+# Perl trim function to remove whitespace from the start and end of the string
+sub trim($)
+{
+        my $string = shift;
+        $string =~ s/^\s+//;
+        $string =~ s/\s+$//;
+        return $string;
+}
+# Left trim function to remove leading whitespace
+sub ltrim($)
+{
+        my $string = shift;
+        $string =~ s/^\s+//;
+        return $string;
+}
+# Right trim function to remove trailing whitespace
+sub rtrim($)
+{
+        my $string = shift;
+        $string =~ s/\s+$//;
+        return $string;
+}
+
+#
+# Usage message 
+#
+sub usage()
+  {
+    print STDERR << "EOF";
+
+embed embeds preconditions, postconditions, assertions, and assumptions into
+a C source file, which can then be processed using an extension to CIL.
+
+usage: $0 [flags] prog.c
+
+flags include:
+--default=analysis    specify the default analysis (for instance, UNITS)
+--help                display usage info (which you are now reading) and exit
+
+short forms include:
+-d       =        --default
+-?       =        --help
+
+EOF
+}

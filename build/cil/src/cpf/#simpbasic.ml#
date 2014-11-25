@@ -1,0 +1,116 @@
+(*
+ *
+ * Copyright (c) 2001-2002, 
+ *  George C. Necula    <necula@cs.berkeley.edu>
+ *  Scott McPeak        <smcpeak@cs.berkeley.edu>
+ *  Wes Weimer          <weimer@cs.berkeley.edu>
+ *  Sumit Gulwani       <gulwani@cs.berkeley.edu>
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in the
+ * documentation and/or other materials provided with the distribution.
+ *
+ * 3. The names of the contributors may not be used to endorse or promote
+ * products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+ * PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ *)
+
+(* FSL: This module is based on simplify.ml, but with two changes.
+  
+   1. Only expressions inside function calls and return statements
+      are transformed. This helps with the analysis we perform,
+      while not creating too many extraneous temporaries.
+
+   2. We do not do any of the addressing simplification performed
+      in the original. We would rather avoid pointer arithmetic.
+
+   Note that we also do not do any of the structure splitting, and
+   have removed the code used for that.
+*)
+
+open Pretty
+open Cil
+module E = Errormsg
+module H = Hashtbl
+
+type taExp = exp (* Three address expression *)
+type bExp = exp  (* Basic expression *)
+
+(** This visitor will transform expressions inside calls and returns into
+    expressions assigned to temporaries. The temporaries will then be used
+    at the original location of the expression. This makes sure that function
+    calls and returns are "simple", just referencing existing variables, versus
+    performing computation beyond the call or return itself. 
+**)
+class simpBasicVisitor (fi: fundec) = object (self)
+  inherit nopCilVisitor
+
+  method private makeBasic (e: exp) : bExp = 
+    self#makeTemp e
+
+  method private makeTemp (e1: exp) : exp = 
+    let t = makeTempVar fi (typeOf e1) in
+      (* Add this instruction before the current statement *)
+      self#queueInstr [Set(var t, e1, !currentLoc)];
+      Lval(var t)
+
+  (** We want the argument in a return to be a simple variable *)
+  method vstmt (s:stmt) =
+
+    match s.skind with
+      | Return (Some e, l) -> 
+	  let e' = self#makeBasic e in 
+	    s.skind <- (Return (Some e', l)) ;
+	    (* ignore (E.log "%s\n" (sprint 200 (d_exp () e))) ; *)
+	    DoChildren
+      | _ -> DoChildren
+	  
+  method vinst (i: instr) =
+    match i with 
+      | Call (someo, f, args, loc) -> 
+          let args' = List.map (fun a -> match a with Const _ -> a | _ -> self#makeBasic a) args in 
+          (*let _ = List.map (fun x -> ignore (E.log "%s\n" (sprint 200 (d_exp () x)))) args in*)
+	    ChangeTo [ Call (someo, f, args', loc) ]
+      | _ -> DoChildren
+	  
+end
+
+let doGlobal = function 
+    GFun(fi, _) ->  
+      (* Visit the body and change expressions in calls and returns into three address code *)
+      let v = new simpBasicVisitor fi in
+      fi.sbody <- visitCilBlock v fi.sbody;
+  | _ -> ()
+      
+let feature : featureDescr = 
+  { fd_name = "simpbasic";
+    fd_enabled = ref false;
+    fd_description = "simplifies CIL function calls and returns";
+    fd_extraopt = [];
+    fd_doit = (function f -> iterGlobals f doGlobal);
+    fd_post_check = true;
+  }
+
+
+

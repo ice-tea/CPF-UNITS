@@ -1,0 +1,4250 @@
+*****************************************************************************
+***
+*** Syntax modules.
+***
+*** These modules provide syntax for C.
+***
+*****************************************************************************
+
+***
+*** Identifiers in C. Identifiers can be variable names, structure fields,
+*** etc.
+***
+fmod IDENTIFIER-SYNTAX is
+  protecting QID .
+  sort Identifier .
+  
+  ***
+  *** Constructor for identifiers. In general, they are of the form
+  *** n(QID), like n('x), but we can also define some common ones as
+  *** identifiers directly (like int). We actually distinguish between
+  *** identifiers for formal parameters (nf) and for temporaries
+  *** created by CIL for the three-address transform (nt) as well, since
+  *** we may want special handling for these -- since temporaries
+  *** are used just in local computations inside a block, we can
+  *** throw away changes to temporaries to keep the environment
+  *** size down, for instance.
+  ***
+  *** NOTE: Now we also distinguish globals, ng.
+  ***    
+  op n : Qid -> Identifier .
+  op nf : Qid -> Identifier .
+  op nt : Qid -> Identifier .
+  op ng : Qid -> Identifier .
+  op nfun : Qid -> Identifier .
+  		  	  
+  ***
+  *** Unwraps QIDs from inside an identifier
+  ***       
+  var Q : Qid .
+  op getQid : Identifier -> Qid .
+  eq getQid(n(Q)) = Q .
+  eq getQid(nf(Q)) = Q .
+  eq getQid(nt(Q)) = Q .
+  eq getQid(ng(Q)) = Q .
+  eq getQid(nfun(Q)) = Q .
+  
+  ***
+  *** Determine if this is a function name or not.
+  ***
+  var X : Identifier .
+  op isFunIdent : Identifier -> Bool .
+  eq isFunIdent(nfun(Q)) = true .
+  eq isFunIdent(X) = false [owise] .
+  
+endfm
+
+***
+*** Variables.
+***
+fmod VARIABLE-SYNTAX is
+  including IDENTIFIER-SYNTAX .
+  sort Var .
+  subsort Identifier < Var .
+endfm
+
+***
+*** Scalar constants in C. These are ints, floats, characters, and
+*** strings. Note that we don't deal here explicitly with different 
+*** types of these values (such as long ints, doubles, etc). If needed,
+*** we will need to get that information from CIL, since Maude does
+*** not distinguish between short int, int, unsigned int, etc.
+***
+fmod SCALARS-SYNTAX is
+  including INT .
+  including FLOAT .
+  including STRING .
+
+  sorts CInt CFloat CChar CString Constant .
+  subsorts CInt CFloat CChar CString < Constant .
+  
+  op i : Int -> CInt .
+  op f : Float -> CFloat .
+  op c : Char -> CChar .
+  op s : String -> CString .
+endfm
+
+***
+*** Expressions in C. We include all expressions in one module
+*** for simplicity, versus factoring them out into multiple
+*** modules. Note that CIL ensures we do not see some of these
+*** operators in practice -- the comma operator and the ternary
+*** conditional operator, for instance, are both transformed
+*** into other constructs. They are left here for completeness,
+*** though.
+***
+fmod EXP-SYNTAX-NOTYPES is
+  including IDENTIFIER-SYNTAX .
+  including VARIABLE-SYNTAX .
+  including SCALARS-SYNTAX .
+
+  sorts Exp ExpList .
+  subsorts Var Constant < Exp < ExpList .
+  
+  ***
+  *** Expression list operations
+  ***
+  op empty : -> ExpList .
+  op _,_ : ExpList ExpList -> ExpList [assoc id: empty] .  
+
+  ***  
+  *** Arithmetic operations
+  ***
+  op _++ : Exp -> Exp .
+  op _-- : Exp -> Exp .
+  op ++_ : Exp -> Exp .
+  op --_ : Exp -> Exp .
+  op +_  : Exp  -> Exp .
+  op -_  : Exp  -> Exp .
+  op _*_ : Exp Exp -> Exp .
+  op _/_ : Exp Exp -> Exp .
+  op _%_ : Exp Exp -> Exp .
+  op _+_ : Exp Exp -> Exp .
+  op _-_ : Exp Exp -> Exp .
+
+  ***  
+  *** Bit shifting/bitwise operations
+  ***
+  op _>>_ : Exp Exp -> Exp .
+  op _<<_ : Exp Exp -> Exp .
+  op _&_  : Exp Exp -> Exp .
+  op _^_  : Exp Exp -> Exp .
+  op _|_  : Exp Exp -> Exp .
+
+  ***
+  *** Logical operations
+  ***    
+  op !_   : Exp -> Exp .
+  op _&&_ : Exp Exp -> Exp .
+  op _||_ : Exp Exp -> Exp .
+
+  ***
+  *** Relational operations
+  ***
+  op _<_  : Exp Exp -> Exp .
+  op _>_  : Exp Exp -> Exp .
+  op _<=_ : Exp Exp -> Exp .
+  op _>=_ : Exp Exp -> Exp .
+  op _c==_ : Exp Exp -> Exp .
+  op _!=_ : Exp Exp -> Exp .
+
+  ***
+  *** Ternary if. Note that, if the C source is processed by CIL
+  *** first, these are turned into conditional statements, so we
+  *** should not actual encounter these in CIL-generated source.
+  ***
+  op _?_:_ : Exp Exp Exp -> Exp .
+
+  ***
+  *** Assignments, and assignment/op combos
+  ***
+  op _=_   : Exp Exp -> Exp .
+  op _+=_  : Exp Exp -> Exp .
+  op _-=_  : Exp Exp -> Exp .
+  op _*=_  : Exp Exp -> Exp .
+  op _/=_  : Exp Exp -> Exp .
+  op _%=_  : Exp Exp -> Exp .
+  op _>>=_ : Exp Exp -> Exp .
+  op _<<=_ : Exp Exp -> Exp .
+  op _^=_  : Exp Exp -> Exp .
+  op _&=_  : Exp Exp -> Exp .
+  op _|=_  : Exp Exp -> Exp .
+
+  ***
+  *** Addressing-related/memory operations
+  ***
+  op &_ : Exp -> Exp .
+  op *_ : Exp -> Exp .
+  op sizeof_ : Exp -> Exp .
+  op #alignof_ : Exp -> Exp .
+  
+  ***
+  *** Array notation
+  ***
+  op _[] : Exp -> Exp .
+  op _[_] : Exp Exp -> Exp .
+
+  ***
+  *** Structure notation
+  ***
+  op _._ : Exp Identifier -> Exp .
+  op _->_ : Exp Identifier -> Exp .
+
+  ***
+  *** Note we do not define the comma operator, since
+  *** this will conflict with the expression list syntax
+  *** since both are comma-separated lists of expressions,
+  *** and since this will lead to circular sorts
+  *** like Exp < ExpList < Exp. CIL will transform these
+  *** into sequences of statements anyway, so we will not
+  *** need to process them.
+  ***
+
+  ***
+  *** Function invocations
+  ***
+  op _()  : Exp -> Exp .
+  op _(_) : Exp ExpList -> Exp .
+endfm 
+
+***
+*** Declarations in C. Section numbers are based on those from the ISO
+*** C99 standard. Occasional references are made to C: A Reference Manual, 
+*** 5th Edition, sections 4 and 5. 
+***
+fmod DECLARATION-SYNTAX is
+  including IDENTIFIER-SYNTAX .
+  including VARIABLE-SYNTAX .
+  including EXP-SYNTAX-NOTYPES .
+
+  ***
+  *** Declarations (6.7). This references ahead for storage-class specifiers in
+  *** 6.7.1, type specifiers in 6.7.2, type qualifiers in 6.7.3, function specifiers
+  *** in 6.7.4, and declarators in 6.7.5.
+  ***
+  *** Note that, in CIL, declarations are always split out from initializations.
+  *** So, even though we have the syntax here to support int x = 5; it will always
+  *** be turned into int x; x = 5; by the time we see it here.
+  ***
+  sorts Declaration DeclarationSpecifier DeclarationSpecifierList InitDeclarator InitDeclaratorList .
+  
+  op declT : DeclarationSpecifierList -> Declaration .
+  op decl : DeclarationSpecifierList InitDeclaratorList -> Declaration .
+  
+  subsort DeclarationSpecifier < DeclarationSpecifierList .
+  op empty : -> DeclarationSpecifierList .
+  op __ : DeclarationSpecifierList DeclarationSpecifierList -> DeclarationSpecifierList [assoc id: empty] .
+  subsort StorageClassSpecifier < DeclarationSpecifier .
+
+  subsort InitDeclarator < InitDeclaratorList .
+  op empty : -> InitDeclaratorList .
+  op _,_ : InitDeclaratorList InitDeclaratorList -> InitDeclaratorList [assoc id: empty] .    
+    
+  subsort Declarator < InitDeclarator .
+  op _i=_ : Declarator Initializer -> InitDeclarator .
+  
+  ***
+  *** Storage-class specifiers (6.7.1)
+  ***  
+  sort StorageClassSpecifier .
+  ops typedef extern static auto register : -> StorageClassSpecifier .
+
+  ***
+  *** Type specifiers (6.7.2). Structures and unions are discussed below
+  *** in 6.7.2.1, enums in 6.7.2.2, typedefs in 6.7.7. 
+  ***
+  sort TypeSpecifier .
+  subsort TypeSpecifier < SpecifierQualifier .
+  ops void char short int long float double signed unsigned CBool CComplex : -> TypeSpecifier .
+  subsort StructOrUnionSpecifier < TypeSpecifier .
+  subsort EnumSpecifier < TypeSpecifier .  
+  subsort TypedefName < TypeSpecifier .
+  
+  ***
+  *** Structures and unions (6.7.2.1). Similar to the definition of 6.7.1, except
+  *** we keep StructSpecifier and UnionSpecifier separate, instead of just separating
+  *** the struct and union keywords (see def of struct-or-union in 6.7.2.1).
+  *** Note that technically a struct declarator can be a constant expression, not just
+  *** a constant, but since we get this post-CIL translation the original constant
+  *** expression has been transformed into a constant.
+  ***
+  sorts StructSpecifier UnionSpecifier StructOrUnionSpecifier .
+  subsort StructSpecifier < StructOrUnionSpecifier .
+  subsort UnionSpecifier < StructOrUnionSpecifier .
+  
+  op struct`{_} : StructDeclarationList -> StructSpecifier .
+  op struct_{_} : Identifier StructDeclarationList -> StructSpecifier .
+  op struct_ : Identifier -> StructSpecifier .
+  
+  op union`{_} : StructDeclarationList -> UnionSpecifier .
+  op union_{_} : Identifier StructDeclarationList -> UnionSpecifier .
+  op union_ : Identifier -> UnionSpecifier .
+      
+  sorts StructDeclaration StructDeclarationList .
+  subsort StructDeclaration < StructDeclarationList .
+  op empty : -> StructDeclarationList .
+  op __ : StructDeclarationList StructDeclarationList -> StructDeclarationList [assoc id: empty] .
+  
+  op sdwrap : DeclarationSpecifierList StructDeclaratorList -> StructDeclaration .
+  
+  sorts SpecifierQualifier SpecifierQualifierList .
+  subsort SpecifierQualifier < SpecifierQualifierList .
+  op empty : -> SpecifierQualifierList .
+  op _,_ : SpecifierQualifierList SpecifierQualifierList -> SpecifierQualifierList [assoc id: empty] .
+  
+  subsort SpecifierQualifier < DeclarationSpecifier .
+  subsort SpecifierQualifierList < DeclarationSpecifierList .
+  
+  sorts StructDeclarator StructDeclaratorList .
+  subsort StructDeclarator < StructDeclaratorList .
+  op empty : -> StructDeclaratorList .
+  op _,_ : StructDeclaratorList StructDeclaratorList -> StructDeclaratorList [assoc id: empty] .
+  
+  subsort Declarator < StructDeclarator .
+  op _:_ : Declarator Constant -> StructDeclarator .
+  op :_ : Constant -> StructDeclarator .
+  
+  ***
+  *** Enums (6.7.2.2). Note that we don't specially handle the case where
+  *** the list ends with a comma, since we do some syntax translation before
+  *** in CIL and this isn't maintained.
+  ***
+  sorts Enumerator EnumeratorList EnumSpecifier EnumConstant .
+
+  op enum_{_} : Identifier EnumeratorList -> EnumSpecifier .
+  op enum`{_} : EnumeratorList -> EnumSpecifier .
+  op enum_ : Identifier -> EnumSpecifier .
+    
+  subsort Enumerator < EnumeratorList .
+  op empty : -> EnumeratorList .
+  op _,_ : EnumeratorList EnumeratorList -> EnumeratorList [assoc id: empty] .
+  
+  subsort EnumConstant < Enumerator .
+  op ec : Qid -> EnumConstant .
+  op _e=_ : EnumConstant Constant -> Enumerator .
+         
+  ***
+  *** Tags (6.7.2.3) -- The syntax for tags is present in the syntax for
+  *** structs and unions (6.7.2.1) and for enums (6.7.2.2). 6.7.2.3 explains
+  *** the semantics of tags but adds no new syntax.
+  ***
+	 
+  ***
+  *** Type Qualifiers (6.7.3). 
+  ***
+  sort TypeQualifier .
+  subsort TypeQualifier < SpecifierQualifier .
+  ops const restrict volatile : -> TypeQualifier .
+  
+  ***
+  *** Function Specifiers (6.7.4).
+  ***
+  sort FunctionSpecifier .
+  subsort FunctionSpecifier < SpecifierQualifier .
+  op inline : -> FunctionSpecifier .
+  
+  ***
+  *** Declarators (6.7.5). We can simplify a bit, since CIL will parse for us (we don't
+  *** need this definition to prevent syntax errors). We don't subsort so we can keep
+  *** the declaration sorts separate from the expression sorts -- instead we inject
+  *** identifiers in with the did op. Support for pointers (6.7.5.1) is included
+  *** directly here instead of being broken out into another section of the module.
+  ***
+  *** TODO: Since we do not currently support function pointers, and since we
+  *** do not process function prototypes here (CIL handles this), we still need
+  *** to add syntax support for prototype declarators (6.7.5.3). Also, we do
+  *** not yet support all the variations in C arrays introduced in C99, but
+  *** instead just support standard array declarators (see 6.7.5.2, we do
+  *** not yet support arrays with type qualifier lists or static, which
+  *** are just used in array-typed function parameters).
+  ***
+  sorts Declarator Pointer .
+  
+  op did : Identifier -> Declarator .
+  op __ : Pointer Declarator -> Declarator .
+  op _[] : Declarator -> Declarator .
+  op _[_] : Declarator Constant -> Declarator .
+  op _`(_`) : Declarator ParameterTypeList -> Declarator .
+  
+  sort TypeQualifierList .
+  subsort TypeQualifier < TypeQualifierList .
+  op empty : -> TypeQualifierList .
+  op __ : TypeQualifierList TypeQualifierList -> TypeQualifierList [assoc id: empty] .
+  
+  op * : -> Pointer .
+  op *_ : TypeQualifierList -> Pointer .
+  op *_ : Pointer -> Pointer .
+  op *__ : TypeQualifierList Pointer -> Pointer .
+
+  op emptyD : -> Declarator . *** placeholder when we have no information
+  
+  ***
+  *** For function pointers, we just support lists with optional abstract declarators,
+  *** since we have no need for identifiers on the types.
+  ***
+  sorts ParameterTypeList ParameterList ParameterDeclaration .
+  subsort ParameterList < ParameterTypeList .
+  subsort ParameterDeclaration < ParameterList .
+  
+  op vargs : -> ParameterList .
+  
+  op emptyPL : -> ParameterList .
+  op _,_ : ParameterList ParameterList -> ParameterList [assoc id: emptyPL] .
+  
+  op adec : DeclarationSpecifierList -> ParameterDeclaration .
+  op adec : DeclarationSpecifierList AbstractDeclarator -> ParameterDeclaration .
+  
+  op ft : ParameterList TypeSpecifier -> TypeSpecifier .
+  
+  ***
+  *** Type Names (6.7.6)
+  ***
+  *** NOTE: Right now SpecifierQualifierList is a subsort of TypeName
+  *** and is also injected into TypeName. This works fine, but
+  *** TODO: modify output of CIL to remove one of these cases. Also,
+  *** support for variable-length arrays and abstract declarators
+  *** that reference function parameter lists still needs to be
+  *** added.
+  ***
+  sorts TypeName AbstractDeclarator .
+  
+  op tname : DeclarationSpecifierList AbstractDeclarator -> TypeName .
+  op tname : DeclarationSpecifierList -> TypeName .
+  subsort SpecifierQualifierList < TypeName .
+  
+  subsort Pointer < AbstractDeclarator .
+  op __ : Pointer AbstractDeclarator -> AbstractDeclarator .
+  
+  op `(_`) : AbstractDeclarator -> AbstractDeclarator .
+  op _[_] : AbstractDeclarator Constant -> AbstractDeclarator .
+  op _[] : AbstractDeclarator -> AbstractDeclarator .
+  op [_] : Constant -> AbstractDeclarator .
+  op [] : -> AbstractDeclarator .
+  
+  ***
+  *** Type Definitions (6.7.7)
+  *** 
+  *** The actual typedef keyword is a Storage Specifier, above.
+  *** Here, tdn is the "typedef name", a wrapper for Qid and Identifier.
+  ***
+  sort TypedefName .
+  op tdn : Qid -> TypedefName .
+  op tdn : Identifier -> TypedefName .
+
+  ***
+  *** Initialization (6.7.8). Note that we wrap expressions in
+  *** initializers since subsorting can be a problem. Also, note 
+  *** that CIL will turn initializers into post-declaration 
+  *** expressions, so we won't actually encounter these in 
+  *** CIL-processed code (but they are here for completeness,
+  *** since we could theoretically generate code inside Maude 
+  *** with these constructs).
+  ***
+  *** TODO: This syntax does not yet support the full syntax in 6.7.8
+  *** since it does not include designators. This is a low-priority
+  *** addition, since CIL doesn't leave initializers as part of
+  *** declarations anyway, instead moving them to a point after the
+  *** declaration.
+  ***
+  sorts Initializer InitializerList .
+  op iexp : Exp -> Initializer .
+  op {_} : InitializerList -> Initializer .
+  op {_,} : InitializerList -> Initializer .
+
+  subsort Initializer < InitializerList .
+  op empty : -> InitializerList .
+  op _,_ : InitializerList InitializerList -> InitializerList [assoc id: empty] .
+endfm
+
+***
+*** Provide a number of helpers for working with declarations,
+*** such as ways to extract the type name, determine if a declaration
+*** is for a pointer or array, etc.
+***
+fmod DECLARATION-SYNTAX-HELPERS is
+  including DECLARATION-SYNTAX .
+  
+  var DSL : DeclarationSpecifierList . var ID : InitDeclarator .
+  var D : Declarator . var I : Initializer . var Q : Qid .
+  var P : Pointer . var C : Constant . var DS : DeclarationSpecifier .
+  var X : Identifier . var SDL : StructDeclarationList .
+  var EL : EnumeratorList . var TQL : TypeQualifierList .
+  var Decl : Declaration .
+
+  ***
+  *** Introduce name categories. These can be used in the checks
+  *** below (whether a name is a formal, etc).
+  ***
+  sort NameCategory .
+  ops formalNC localNC globalNC tempNC funNC noNC : -> NameCategory .
+  op getNC : Declaration -> NameCategory .
+  op getNCInit : InitDeclarator -> NameCategory .
+  op getNCDecl : Declarator -> NameCategory .
+
+  *** Declarations
+  eq getNC(decl(DSL,ID)) = getNCInit(ID) .
+  eq getNC(declT(DSL)) =  noNC .
+  
+  *** InitDeclarators
+  eq getNCInit( D i= I) = getNCDecl(D) .
+  eq getNCInit(D) = getNCDecl(D) .
+  
+  *** Declarators
+  eq getNCDecl(D []) = getNCDecl(D) .
+  eq getNCDecl(D [ C ]) = getNCDecl(D) .
+  eq getNCDecl(P D) = getNCDecl(D) .
+  eq getNCDecl(did(nf(Q))) = formalNC .
+  eq getNCDecl(did(ng(Q))) = globalNC .
+  eq getNCDecl(did(nt(Q))) = tempNC .
+  eq getNCDecl(did(nfun(Q))) = funNC .
+  eq getNCDecl(did(n(Q))) = localNC .
+      
+  ***
+  *** Determine if the name of the declarator is a formal parameter.
+  ***
+  op formalNameDecl : Declaration -> Bool .
+  eq formalNameDecl(Decl) = ( getNC(Decl) == formalNC ) .
+  
+  ***
+  *** Determine if the name of the declarator is a global var inlined
+  *** into the function body
+  ***
+  op globalNameDecl : Declaration -> Bool .
+  eq globalNameDecl(Decl) = ( getNC(Decl) == globalNC ) .
+
+  ***
+  *** Get the DSL and Declarator for a declaration
+  ***
+  op getDeclDSL : Declaration -> DeclarationSpecifierList .
+  op getDeclD : Declaration -> Declarator .
+  
+  eq getDeclDSL(decl(DSL,ID)) = DSL .
+  eq getDeclD(decl(DSL,D)) = D .
+  eq getDeclD(decl(DSL,(D i= I))) = D .
+  
+  ***
+  *** Get the name of the declarator.
+  ***
+  op getDeclName : Declaration -> Identifier .
+  op getDeclaratorName : Declarator -> Identifier .
+  
+  eq getDeclName(Decl) = getDeclaratorName(getDeclD(Decl)) .
+  eq getDeclaratorName(D []) = getDeclaratorName(D) .
+  eq getDeclaratorName(D [ C ]) = getDeclaratorName(D) .
+  eq getDeclaratorName(P D) = getDeclaratorName(D) .
+  eq getDeclaratorName(did(X)) = X .
+
+  ***
+  *** Operators used to determine the kind of declaration this
+  *** represents -- a pointer, structure, etc. CIL gives one
+  *** declaration at a time, so we don't have to worry about
+  *** cases like: int *p, x; where *p is a pointer but x is not.
+  ***
+  op isPointerDecl : Declaration -> Bool .
+  op isArrayDecl : Declaration -> Bool .
+  op isStructDecl : Declaration -> Bool .
+  op isUnionDecl : Declaration -> Bool .
+  op isEnumDecl : Declaration -> Bool .
+  op isFunDecl : Declaration -> Bool .
+  op isScalarDecl : Declaration -> Bool .
+  
+  op isPointerDeclarator : Declarator -> Bool .
+  op isArrayDeclarator : Declarator -> Bool .
+    
+  ***
+  *** Determine if this is a pointer declaration. This is in the
+  *** declarator; if we have *p[], this is primarily an array, not
+  *** a pointer.
+  ***
+  eq isPointerDecl(Decl) = isPointerDeclarator(getDeclD(Decl)) .
+  
+  eq isPointerDeclarator(P D) = not (isArrayDeclarator(D)) .
+  eq isPointerDeclarator(D) = false [owise] .
+
+  ***
+  *** Determine if this is an array declaration. Remember,
+  *** char *p[] is an array of pointers,so in that case (the
+  *** last one) we need to keep looking in the rest of the
+  *** declarator.
+  ***
+  eq isArrayDecl(Decl) = isArrayDeclarator(getDeclD(Decl)) .
+  
+  eq isArrayDeclarator(D []) = true .
+  eq isArrayDeclarator(D [ C ]) = true .
+  eq isArrayDeclarator(P D) = isArrayDeclarator(D) .  
+  eq isArrayDeclarator(did(X)) = false .
+
+  ***
+  *** Determine if a declaration is for a structure; this will be
+  *** false if it is a pointer or an array, even if a pointer to or
+  *** array of a structure type.
+  ***
+  op isStructDSL : DeclarationSpecifierList -> Bool .
+  op isStructDS : DeclarationSpecifier -> Bool .
+  
+  eq isStructDecl(decl(DSL,ID)) = (not isPointerDecl(decl(DSL,ID))) and 
+  	(not isArrayDecl(decl(DSL,ID))) and isStructDSL(DSL) .
+  eq isStructDecl(declT(DSL)) = isStructDSL(DSL) .
+
+  eq isStructDSL(DS DSL) = isStructDS(DS) or isStructDSL(DSL) .
+  eq isStructDSL(empty) = false .
+  
+  eq isStructDS(struct X) = true .
+  eq isStructDS(struct X { SDL }) = true .
+  eq isStructDS(struct { SDL }) = true .
+  eq isStructDS(DS) = false [owise] .
+  
+  ***
+  *** Determine if a declaration is for a union; this will be
+  *** false if it is a pointer or an array, even if a pointer to or
+  *** array of a union type.
+  ***
+  op isUnionDSL : DeclarationSpecifierList -> Bool .
+  op isUnionDS : DeclarationSpecifier -> Bool .
+  
+  eq isUnionDecl(decl(DSL,ID)) = (not isPointerDecl(decl(DSL,ID))) and 
+  	(not isArrayDecl(decl(DSL,ID))) and isUnionDSL(DSL) .
+  eq isUnionDecl(declT(DSL)) = isUnionDSL(DSL) .
+
+  eq isUnionDSL(DS DSL) = isUnionDS(DS) or isUnionDSL(DSL) .
+  eq isUnionDSL(empty) = false .
+  
+  eq isUnionDS(union X) = true .
+  eq isUnionDS(union X { SDL }) = true .
+  eq isUnionDS(union { SDL }) = true .
+  eq isUnionDS(DS) = false [owise] .
+
+  ***
+  *** Determine if a declaration is for an enum; this will be
+  *** false if it is a pointer or an array, even if a pointer to or
+  *** array of an enum type.
+  ***
+  op isEnumDSL : DeclarationSpecifierList -> Bool .
+  op isEnumDS : DeclarationSpecifier -> Bool .
+  
+  eq isEnumDecl(decl(DSL,ID)) = (not isPointerDecl(decl(DSL,ID))) 
+  	and (not isArrayDecl(decl(DSL,ID))) and isEnumDSL(DSL) .
+  eq isEnumDecl(declT(DSL)) = isEnumDSL(DSL) .
+  
+  eq isEnumDSL(DS DSL) = isEnumDS(DS) or isEnumDSL(DSL) .
+  eq isEnumDSL(empty) = false .
+  
+  eq isEnumDS(enum X) = true .
+  eq isEnumDS(enum X { EL }) = true .
+  eq isEnumDS(enum { EL }) = true .
+  eq isEnumDS(DS) = false [owise] .
+
+  ***
+  *** Determine if a declaration is for a function type, like
+  *** what is used in function pointers; this will be
+  *** false if it is a pointer or an array, even if a pointer to or
+  *** array of a function type.
+  ***
+  op isFunDSL : DeclarationSpecifierList -> Bool .
+  op isFunDS : DeclarationSpecifier -> Bool .
+  
+  eq isFunDecl(decl(DSL,ID)) = (not isPointerDecl(decl(DSL,ID))) 
+  	and (not isArrayDecl(decl(DSL,ID))) and isFunDSL(DSL) .
+  eq isFunDecl(declT(DSL)) = isFunDSL(DSL) .
+  
+  eq isFunDSL(DS DSL) = isFunDS(DS) or isFunDSL(DSL) .
+  eq isFunDSL(empty) = false .
+  
+  eq isFunDS(ft(PL:ParameterList,TS:TypeSpecifier)) = true .
+  eq isFunDS(DS) = false [owise] .
+
+  ***
+  *** Determine if a declaration is for a scalar type; we include void as a scalar, since the
+  *** only uses of it in actual named declarations are with pointers, so we can represent
+  *** the pointed to value as a scalar of some sort until we have more information.
+  *** NOTE: We could treat enums as scalars here, but instead keep them separate.
+  ***
+  op isScalarDSL : DeclarationSpecifierList -> Bool .
+  
+  eq isScalarDecl(Decl) = not (isPointerDecl(Decl) or isArrayDecl(Decl) or isStructDecl(Decl) or 
+                               isUnionDecl(Decl) or isFunDecl(Decl) or isEnumDecl(Decl)) .
+			       
+  eq isScalarDSL(DSL) = not (isStructDSL(DSL) or isUnionDSL(DSL) or isFunDSL(DSL) or isEnumDSL(DSL)) .
+
+  ***
+  *** Determine the pointer depth (*p = 1, **p = 2, etc)
+  ***
+  op getPointerDeclarationDepth : Declaration -> Nat .
+  eq getPointerDeclarationDepth(Decl) = getPointerDeclaratorDepth(getDeclD(Decl)) .
+  
+  op getPointerDeclaratorDepth : Declarator -> Nat .
+  eq getPointerDeclaratorDepth(P D) = getPointerDepth(P) .
+  eq getPointerDeclaratorDepth(D) = 0 [owise] .
+    
+  op getPointerDepth : Pointer -> Nat .
+  eq getPointerDepth(*) = 1 .
+  eq getPointerDepth(* TQL) = 1 .
+  eq getPointerDepth(*_(P)) = s(getPointerDepth(P)) .
+  eq getPointerDepth(*__(TQL,P)) = s(getPointerDepth(P)) .
+  
+  ***
+  *** Strip off all layers of indirection from the type until we get to a
+  *** "base" type, like a scalar, structure, etc.
+  ***
+  op stripPointerDecl : Declarator -> Declarator .
+  eq stripPointerDecl(P D) = D .
+  eq stripPointerDeclByOne(D) = D [owise] .
+  
+  op stripPointerDeclByOne : Declarator -> Declarator .
+ ceq stripPointerDeclByOne(P D) = stripPointerByOne(P) D
+  if getPointerDepth(P) > 1 .
+ ceq stripPointerDeclByOne(P D) = D
+  if getPointerDepth(P) == 1 .
+  eq stripPointerDeclByOne(D) = D [owise] .
+
+  op stripPointerByOne : Pointer -> Pointer .
+  eq stripPointerByOne(*_(P)) = P .
+  eq stripPointerByOne(*__(TQL,P)) = P .
+  
+  ***
+  *** Get the array depth; int a[] = 1, int a[][] = 2, etc.
+  ***
+  op getArrayDeclaratorDepth : Declarator -> Nat .
+  eq getArrayDeclaratorDepth(did(X)) = 0 .
+  eq getArrayDeclaratorDepth(D []) = 1 + getArrayDeclaratorDepth(D) .
+  eq getArrayDeclaratorDepth(D [ C ]) = 1 + getArrayDeclaratorDepth(D).
+  eq getArrayDeclaratorDepth(P D) = 0 .
+
+  ***
+  *** Strip off the array part of the declaration; int a[10] becomes
+  *** just int, int *p[] becomes int *p, etc. Used to figure out what
+  *** we have an array of.
+  ***
+  op stripArrayDecl : Declarator -> Declarator .
+  eq stripArrayDecl(D []) = stripArrayDecl(D) .
+  eq stripArrayDecl(D [ C ]) = stripArrayDecl(D) .
+  eq stripArrayDecl(P D) = P stripArrayDecl(D) .
+  eq stripArrayDecl(D) = D [owise] .
+
+  op stripArrayDeclByOne : Declarator -> Declarator .
+  eq stripArrayDeclByOne(D []) = D .
+  eq stripArrayDeclByOne(D [ C ]) = D .
+  eq stripArrayDeclByOne(P D) = P stripArrayDeclByOne(D) .
+  eq stripArrayDeclByOne(D) = D [owise] .
+        
+  ***
+  *** Get the structure name. We assume this is a structure
+  *** decl; it will get stuck if it isn't.
+  ***
+  op getStructName : Declaration -> Identifier .
+  eq getStructName(decl(DSL,ID)) = getStructDSLName(DSL) .
+  eq getStructName(declT(DSL)) = getStructDSLName(DSL) .
+  
+  op getStructDSLName : DeclarationSpecifierList -> Identifier .
+ ceq getStructDSLName(DS DSL) = getStructDSName(DS)
+  if isStructDS(DS) .
+  eq getStructDSLName(DS DSL) = getStructDSLName(DSL) [owise] .
+  
+  op getStructDSName : DeclarationSpecifier -> Identifier .
+  eq getStructDSName(struct X) = X .
+  eq getStructDSName(struct X { SDL }) = X .
+   
+  ***
+  *** Get the union name. We assume this is a union
+  *** decl; it will get stuck if it isn't.
+  ***
+  op getUnionName : Declaration -> Identifier .
+  eq getUnionName(decl(DSL,ID)) = getUnionDSLName(DSL) .
+  eq getUnionName(declT(DSL)) = getUnionDSLName(DSL) .
+  
+  op getUnionDSLName : DeclarationSpecifierList -> Identifier .
+ ceq getUnionDSLName(DS DSL) = getUnionDSName(DS)
+  if isUnionDS(DS) .
+  eq getUnionDSLName(DS DSL) = getUnionDSLName(DSL) [owise] .
+  
+  op getUnionDSName : DeclarationSpecifier -> Identifier .
+  eq getUnionDSName(union X) = X .
+  eq getUnionDSName(union X { SDL }) = X .
+  
+  ***
+  *** Get the enum name. We assume this is an enum
+  *** decl; it will get stuck if it isn't.
+  ***
+  op getEnumName : Declaration -> Identifier .
+  eq getEnumName(decl(DSL,ID)) = getEnumDSLName(DSL) .
+  eq getEnumName(declT(DSL)) = getEnumDSLName(DSL) .
+  
+  op getEnumDSLName : DeclarationSpecifierList -> Identifier .
+ ceq getEnumDSLName(DS DSL) = getEnumDSName(DS)
+  if isEnumDS(DS) .
+  eq getEnumDSLName(DS DSL) = getEnumDSLName(DSL) [owise] .
+  
+  op getEnumDSName : DeclarationSpecifier -> Identifier .
+  eq getEnumDSName(enum X) = X .
+  eq getEnumDSName(enum X { EL }) = X .
+endfm
+
+***
+*** Expressions in C which use types. This needs to come after
+*** we declare type names in the declaration syntax.
+***
+fmod EXP-SYNTAX is
+  including EXP-SYNTAX-NOTYPES .
+  including DECLARATION-SYNTAX . 
+
+  ***
+  *** Addressing-related/memory operations
+  ***
+  op sizeof : TypeName -> Exp .
+  op #alignof : TypeName -> Exp .
+
+  ***
+  *** Casts
+  ***
+  op `(_`)_  : TypeName Exp -> Exp .
+  
+  ***
+  *** Add enumerator constants as identifiers.
+  ***
+  op e# : Qid -> Identifier .
+endfm 
+
+***
+*** Statements in C. Again, we include all syntax here,
+*** but could split this out into smaller modules if it
+*** proves useful.
+***
+fmod STMT-SYNTAX is
+  including EXP-SYNTAX .
+  protecting DECLARATION-SYNTAX .
+  
+  sort Stmt .
+
+  ***
+  *** Expression statements
+  ***  
+  op _; : Exp -> Stmt .
+  
+  ***
+  *** "Empty" statements. We will use skip internally, since
+  *** it is more common than just ;, but they are equivalent.
+  ***  
+  op ; : -> Stmt .
+  op skip; : -> Stmt . *** not in C, but useful sometimes
+
+  ***
+  *** Conditionals
+  ***
+  op if__ : Exp Stmt -> Stmt .
+  op if__else_ : Exp Stmt Stmt -> Stmt .
+
+  ***
+  *** Loops
+  ***
+  op while`(_`)_ : Exp Stmt -> Stmt .
+  op do_while`(_`); : Stmt Exp -> Stmt .
+  op for(_;_;_)_ : Exp Exp Exp Stmt -> Stmt .
+  op break; : -> Stmt .
+  op continue; : -> Stmt .
+  
+  ***
+  *** Switch/case
+  ***
+  op switch (_)_  : Exp Stmt -> Stmt .
+  op case_:       : Exp -> Stmt .
+  op default:     : -> Stmt .
+
+  ***
+  *** Labeled statements/gotos
+  ***    
+  op _:     : Identifier -> Stmt .
+  op goto_; : Identifier -> Stmt .
+
+  ***
+  *** Blocks
+  ***    
+  op `{`} : -> Stmt .
+  op `{_`} : StmtList -> Stmt .
+
+  ***
+  *** Function return
+  ***    
+  op return_; : Exp -> Stmt .
+  op return; : -> Stmt .
+
+  ***
+  *** Lists of statements. We include declarations here to make processing
+  *** easier, leaving it to the outside parser to ensure that declarations
+  *** come before statements (making them into statements here means they
+  *** could come anywhere in a block, not just at the beginning, but CIL
+  *** ensures this doesn't happen).
+  ***  
+  sort StmtList .
+  subsort Declaration < Stmt .
+  subsort Stmt < StmtList .
+  op empty : -> StmtList .
+  op __ : StmtList StmtList -> StmtList [assoc id: empty] .  
+endfm
+
+***
+*** Directives. These come in from outside, but are not actually
+*** statements. We will use these to modify the analysis state
+*** or provide additional information useful during analysis.
+***
+fmod DIRECTIVES-SYNTAX is
+  including STMT-SYNTAX .
+  
+  op #CPFLine_ : Int -> Stmt [format (n d d)] .
+  op #CPFWarn : Int String -> Stmt .
+  op #CPFCall : String -> Stmt .
+endfm
+
+***
+*** Syntax extensions for analysis. These are generic -- each policy
+*** is expected to provide its own syntax for policy expressions.
+***
+fmod POLICY-SYNTAX is
+  extending STMT-SYNTAX .
+
+  sorts PolicyExp PolicyVal .
+
+  ***
+  *** Internal syntax common to all policies.
+  ***
+  op assume_; : PolicyExp -> Stmt .
+  op assert_; : PolicyExp -> Stmt .
+  op iassume_; : PolicyExp -> Stmt .
+  op iassert_; : PolicyExp -> Stmt .
+  op tassume : PolicyExp String String -> Stmt .
+  op tassert : PolicyExp String String -> Stmt .
+  op #invariant_; : PolicyExp -> Stmt .
+  op #havoc_; : ExpList -> Stmt .
+  op #unlock_; : ExpList -> Stmt .
+  op #lock_; : ExpList -> Stmt .
+  op @result : -> Identifier .
+  op @unknown : -> Identifier .
+  op @nothing : -> Identifier .
+  op @none : -> Identifier .
+  op @all : -> Identifier .
+  
+  eq ng('@unknown) = @unknown .
+  eq @nothing = @none .  
+  op allocInit : Identifier -> Stmt .
+
+  ***
+  *** External syntax -- this includes the system under analysis.
+  *** The distinction here between #F(Assume|Assert) and #FIC(Assume|Assert)
+  *** is that the latter are based on the pre and post conditions, while the former
+  *** are generated by the use of assume and assert annotations in programs. This
+  *** distinction can be important -- we may want to allow things in pre- and post-
+  *** conditions that we would not allow other places, for instance if we want initial
+  *** assumptions that cannot be changed later. Post-conditions often are restricted
+  *** to the values of formals on entry, as well, while other assertions are not.
+  ***
+  op #CPFAssert`(_`,_`); : Var PolicyExp -> Stmt .
+  op #CPFAssume`(_`,_`); : Var PolicyExp -> Stmt .
+  op #CPFInvariant`(_`,_`); : Var PolicyExp -> Stmt .
+  op #CPFIAssert`(_`,_`); : Var PolicyExp -> Stmt .
+  op #CPFIAssume`(_`,_`); : Var PolicyExp -> Stmt .
+  op #CPFCheckpoint : -> Stmt .
+  op #CPFUnlock`(_`,_`); : Var ExpList -> Stmt .
+  op #CPFHavoc`(_`,_`); : Var ExpList -> Stmt .
+endfm
+
+***
+*** Syntax extensions for type annotations
+***
+fmod TYPE-ANNOTATION-SYNTAX is
+  extending DECLARATION-SYNTAX .
+  extending POLICY-SYNTAX .
+  extending EXP-SYNTAX .
+  extending STMT-SYNTAX .
+  
+  sorts TypeAnn TypeVar TypeVarList .
+  subsort TypeAnn < SpecifierQualifier .
+  subsort TypeVar < PolicyVal .
+  subsort TypeVar < TypeVarList .
+  
+  ***
+  *** CPF Type annotations
+  ***
+  op @cpf : PolicyExp -> TypeAnn .
+  op @cpf : PolicyVal -> TypeAnn .
+  op @cpf : String -> TypeAnn .
+
+  ***
+  *** Type assertions and assumptions.
+  ***  
+  op #CPFTAssert : TypeAnn Exp String String -> Stmt .
+  op #CPFTAssume : TypeAnn Exp String String -> Stmt .
+  op #CPFTVarDecl : TypeVarList -> Stmt .
+  
+  op emptyTVL : -> TypeVarList .
+  op _,_ : TypeVarList TypeVarList -> TypeVarList [assoc id: emptyTVL] .
+  
+  op @ : Qid -> TypeVar .
+  op tvar :  TypeVar -> Identifier .
+endfm
+
+***
+*** Helper operations to get information about annotations out of
+*** declarations.
+***
+fmod TYPE-ANNOTATION-HELPERS is
+  including DECLARATION-SYNTAX .
+  including DECLARATION-SYNTAX-HELPERS .
+  including TYPE-ANNOTATION-SYNTAX .
+
+  vars SL SL' : StmtList . vars S S' : Stmt .
+  vars TA TA' : TypeAnn . var DSL : DeclarationSpecifierList .
+  var IDL : InitDeclaratorList . var DS : DeclarationSpecifier .
+  var D : Declaration .
+  
+  ***
+  *** Retrieve the type annotations in a declaration
+  ***  
+  op getDeclTAnn : Declaration -> DeclarationSpecifierList .
+  op getDSLTAnn : DeclarationSpecifierList -> DeclarationSpecifierList .
+  
+  eq getDeclTAnn(declT(DSL)) = getDSLTAnn(DSL) .
+  eq getDeclTAnn(decl(DSL,IDL)) = getDSLTAnn(DSL) .
+  
+  eq getDSLTAnn(TA DSL) = TA getDSLTAnn(DSL) .
+  eq getDSLTAnn(empty) = empty .
+  eq getDSLTAnn(DS DSL) = getDSLTAnn(DSL) [owise] .
+
+  ***
+  *** Determine if a declaration contains type annotations; it does
+  *** if the retrieved list is non-empty.
+  ***
+  op declContainsTAnn : Declaration -> Bool .
+  eq declContainsTAnn(D) = ( getDeclTAnn(D) =/= empty ) .
+
+  ***
+  *** Determine if a DSL contains type annotations; useful when we
+  *** don't have both parts of a declaration, just the DSL.
+  ***
+  op DSLContainsTAnn : DeclarationSpecifierList -> Bool .
+  eq DSLContainsTAnn(DSL) = ( getDSLTAnn(DSL) =/= empty ) .
+endfm
+
+*****************************************************************************
+***
+*** Configuration modules.
+***
+*** These modules support the analysis configuration, i.e environments,
+*** computations, etc.
+***
+*****************************************************************************
+fmod COMPUTATION is
+  sorts ComputationItem Computation  .
+  subsort ComputationItem < Computation .
+   
+  op nil : -> Computation .
+  op _->_ : Computation Computation -> Computation [assoc id: nil] .
+endfm
+
+***
+*** We will move around "values", which could be concrete or
+*** abstract values (data, types, units, elements of a lattice, etc).
+***
+fmod VALUE is
+  including NAT .
+  including COMPUTATION .
+  sorts Value ValueList .
+  subsort Value < ValueList .
+  
+  op empty : -> ValueList .
+  op _,_ : ValueList ValueList -> ValueList [assoc id: empty] .
+  op val : ValueList -> ComputationItem .    
+  
+  var V : Value . var Vl : ValueList . 
+  op len : ValueList -> Nat .
+  eq len(V,Vl) = 1 + len(Vl) .
+  eq len((empty).ValueList) = 0 .
+endfm
+
+***
+*** Locations, which are abstract representations of a memory location. 
+***
+fmod LOCATION is
+  including NAT .
+  sorts Location LocationList .
+  subsort Location < LocationList .
+    
+  op empty : -> LocationList .
+  op _,_ : LocationList LocationList -> LocationList [assoc id: empty] .
+  op loc : Nat  -> Location .
+
+  vars N M : Nat .
+  
+  ***
+  *** Generate a list of locations
+  ***
+  op locs : Nat Nat -> LocationList .
+  eq locs(N, 0) = empty .
+  eq locs(N, s(M)) = loc(N), locs(s(N),M) .
+  
+  ***
+  *** Useful when something doesn't actually have a location assigned
+  *** yet.
+  ***
+  op noloc : -> Location .
+endfm 
+
+***
+*** Environments and environment sets. We will
+*** represent each environment entry by providing
+*** fixed places for an identifier, location, and
+*** value, with a multiset of additional info for
+*** use in other policies.
+***
+fmod ENVIRONMENT is
+  including IDENTIFIER-SYNTAX .
+  including LOCATION .
+  including VALUE .
+
+  sorts Env EnvSet EnvItem .
+  subsort Env < EnvSet .
+
+  var X : Identifier .  vars Env Env' : Env .  vars L L' : Location .
+  var Ll : LocationList . var N : Nat . var EI : EnvItem .
+  vars V V' : Value . vars Vl Vl' : ValueList . vars ES ES' : EnvSet .
+
+  ***
+  *** Values for uninitialized env locations
+  ***
+  op initValue : Location -> Value .  
+    
+  ***
+  *** Environment sets. These are NOT multisets.
+  ***
+  op emptyES : -> EnvSet .
+  op _|_ : EnvSet EnvSet -> EnvSet [assoc comm id: emptyES] .
+  eq Env | Env = Env .
+
+  ***
+  *** Environments. An environment is either a single
+  *** entry, or 0 or more of them pushed together.
+  ***
+  op noEnv : -> Env .
+  op __ : Env Env -> Env [assoc comm id: noEnv] .
+
+  ***
+  *** Environment items. These are put into environments.
+  ***
+  op noItem : -> EnvItem .
+  op __ : EnvItem EnvItem -> EnvItem [assoc comm id: noItem] .
+  
+  ***
+  *** The definition of an environment entry, which includes
+  *** an identifier, a location, a value (policy-defined),
+  *** and a set of environment items, defined on a per-
+  *** policy basis.
+  ***
+  op [_,_,_,_] : Identifier Location Value EnvItem -> Env .
+  
+  ***
+  *** The size of the environment set.
+  ***
+  op card : EnvSet -> Nat .
+  eq card (Env | ES) = 1 + card(ES) .
+  eq card (emptyES) = 0 .
+  
+  ***
+  *** Drop N random environments out of the set.
+  ***
+  op drop : Nat EnvSet -> EnvSet .
+  eq drop(s(N), (Env | ES)) = drop(N,ES) .
+  eq drop(0,ES) = ES .
+  
+  ***
+  *** Add items into the environment. We can either
+  *** add one id/value mapping, or we can map in
+  *** a number of values to a number of locations
+  *** at once.
+  ***
+  op _[_<-_] : Env Identifier Value -> Env .
+  op _[_<-_] : Env LocationList ValueList -> Env .
+  
+  eq (Env [X,L,V,EI])[X <- V'] = Env [X,L,V',EI] .
+
+  eq (Env [X,L,V,EI])[L,Ll <- V',Vl] = (Env [X,L,V',EI])[Ll <- Vl] .
+  eq (Env)[(empty).LocationList <- empty] = Env .
+
+  ***
+  *** Look up items from the environment.
+  ***
+  op _[_] : Env Identifier -> Value .
+  op _[_] : Env Location -> Value .
+  eq (Env [X,L,V,EI])[X] = V .
+  eq (Env [X,L,V,EI])[L] = V . 
+  
+endfm
+        
+***
+*** Typed environments. We also store declaration 
+*** information: the DeclarationSpecifierList, which holds 
+*** type information like type name, and the Declarator, 
+*** which includes pointer and array notation: for int *p, 
+*** int is the first part, *p the second. 
+***	
+fmod TYPED-ENVIRONMENT is
+  including ENVIRONMENT .
+  including DECLARATION-SYNTAX .
+  
+  op dsl : DeclarationSpecifierList -> EnvItem .
+  op dcl : Declarator -> EnvItem .
+endfm
+
+***
+*** Environments with locks on values.
+***
+fmod VALUE-LOCK-ENVIRONMENT is
+  including ENVIRONMENT .
+  
+  op vlock : Bool -> EnvItem .
+endfm
+
+***
+*** Environments with final values. The distinction between
+*** final values and locks is that final values can be
+*** changed in certain ways that locks cannot.
+***
+fmod FINAL-VALUE-ENVIRONMENT is
+  including ENVIRONMENT .
+  
+  op final : Bool -> EnvItem .
+endfm
+
+***
+*** Environments with values that can be "reverted"; these
+*** will revert back to something else unless overwritten.
+***
+fmod REVERT-VALUE-ENVIRONMENT is
+  including ENVIRONMENT .
+  
+  op revert : -> EnvItem .
+  
+endfm
+
+***
+*** Output. Each output entry includes the warning level,
+*** the line number that triggered the message, and the
+*** message itself. It is also possible to include a set of
+*** environments, which can make the cause of the error more
+*** clear.
+***
+fmod OUTPUT is
+  pr INT .
+  pr STRING .
+  pr ENVIRONMENT .
+  
+  sorts Output OutputSet OutputList Warning WarningItem WarningItemSet .
+  subsort Warning < Output .
+  subsort Output < OutputList .
+  subsort Output < OutputSet .
+  subsort WarningItem < WarningItemSet .
+  
+  var O : Output . var OS : OutputSet . vars OL OL' : OutputList .  
+  vars WS WS' : WarningItemSet . vars I I' : Int .
+  
+  op noOutput : -> OutputSet .
+  op __ : OutputSet OutputSet -> OutputSet [assoc comm id: noOutput] .
+  
+  op emptyOL : -> OutputList .
+  op _,_ : OutputList OutputList -> OutputList [assoc id: emptyOL] .
+  
+  eq O O = O . *** Maintain set-ness
+  
+  op noItems : -> WarningItemSet .
+  op __ : WarningItemSet WarningItemSet -> WarningItemSet [assoc comm id: noItems] .
+  
+  op warning : WarningItemSet -> Warning . 
+  op level : Int -> WarningItem .
+  op ln : Int -> WarningItem .
+  op msg : String -> WarningItem .
+  op wenv : EnvSet -> WarningItem .
+  
+  op setToList : OutputSet -> OutputList .
+  op sortByLine : OutputList -> OutputList .
+  
+  eq setToList(O OS) = O, setToList(OS) .
+  eq setToList(noOutput) = emptyOL .
+  
+ ceq sortByLine(OL, warning(ln(I) WS), warning(ln(I') WS'), OL') =
+     sortByLine(OL, warning(ln(I') WS'), warning(ln(I) WS), OL')
+  if I > I' .
+  eq sortByLine(OL) = OL [owise] .
+endfm
+
+***
+*** Goto Maps. These are used to track information about gotos
+*** New map entries are created either when a labeled statement
+*** is processed or when a goto is encountered that uses a label
+*** not yet visited. The map itself includes the label, the number
+*** of times the goto has been processed, the computation from the
+*** point of the goto onward, the set of environments that were
+*** active during jumps to this label, and the set of environments
+*** active when the labelled statement was last processed.
+***
+fmod GOTO-MAP is
+  including COMPUTATION .
+  including ENVIRONMENT .
+  
+  sorts GotoMap GotoMapSet .
+  subsort GotoMap < GotoMapSet .
+  
+  op emptyGM : -> GotoMapSet .
+  op __ : GotoMapSet GotoMapSet -> GotoMapSet [assoc comm id: emptyGM] .
+  op [_,_,_,_,_,_] : Identifier Nat Nat Computation EnvSet EnvSet -> GotoMap .
+endfm
+
+***
+*** Structure maps. These provide a mapping from names to types, so that
+*** structures can be easily allocated up front or on the fly when needed.
+*** The same mapping is used for unions. Note that we don't currently support
+*** bitmaps or unsafe pointer arithmetic, so we don't try to maintain any
+*** ordering of structure fields.
+***
+*** NOTE: One part of this isn't really needed; StructMapField could have
+*** arity 2, since the identifier is also in the declarator (which could
+*** be something like *p[]). It just allows for quicker lookup if we
+*** also pull this identifier out separately.
+***
+*** NOTE: CIL will move structures around to make it easier for us
+*** to process code. All structures definitions are moved outside of
+*** functions, using renaming if necessary to ensure that names do
+*** not conflict. Anonymous functions are given names, which are used
+*** in declarations -- so struct {...} x becomes struct a {...}, then
+*** struct a x.
+***
+fmod STRUCT-MAP is
+  including DECLARATION-SYNTAX .
+  including DECLARATION-SYNTAX-HELPERS .
+  
+  sorts StructMapField StructMapFieldSet StructMap StructMapSet StructOrUnion .
+  subsort StructMapField < StructMapFieldSet .
+  subsort StructMap < StructMapSet .
+  
+  op empty : -> StructMapFieldSet .
+  op empty : -> StructMapSet .
+  op __ : StructMapFieldSet StructMapFieldSet -> StructMapFieldSet [assoc comm id: empty] .
+  op [_,_|_] : Identifier Declarator DeclarationSpecifierList -> StructMapField .
+  op [_,_@_] : Identifier StructOrUnion StructMapFieldSet -> StructMap .
+  op __ : StructMapSet StructMapSet -> StructMapSet [assoc comm id: empty] .
+  op isStruct : -> StructOrUnion .
+  op isUnion : -> StructOrUnion .
+  
+  ***
+  *** Given a structure or union, turn it into a structure map
+  *** 
+  op structsToStructMap : DeclarationSpecifierList -> StructMapSet .
+  op structToStructMap : StructOrUnionSpecifier -> StructMap .
+  op structDLToSMFS : StructDeclarationList -> StructMapFieldSet .
+  
+  var X : Identifier . var SDL : StructDeclarationList . var SD : StructDeclaration .
+  var SQL : DeclarationSpecifierList . var SDEL : StructDeclaratorList . 
+  var SDecl : StructDeclarator . var D : Declarator . var C : Constant .
+  var DSL : DeclarationSpecifierList . var SS : StructOrUnionSpecifier .
+  
+  ***
+  *** Handle a list of structure and union specifiers .
+  ***
+  eq structsToStructMap(SS DSL) = structToStructMap(SS) structsToStructMap(DSL) .
+  eq structsToStructMap(empty) = empty .
+  
+  ***
+  *** Handle individual structure and union specifiers.
+  ***
+  eq structToStructMap(struct X { SDL }) = [X,isStruct @ structDLToSMFS(SDL)] .
+  eq structToStructMap(union X { SDL }) = [X,isUnion @ structDLToSMFS(SDL)] .
+  
+  ***
+  *** Handle the declarations inside a structure or union specifier.
+  *** CIL will split declarations like int x,y; into int x; int y; so we don't actually
+  *** have to deal with declarator lists, just individual declarators in a declaration list.
+  ***
+  eq structDLToSMFS(sdwrap(SQL,D) SDL) = [getDeclaratorName(D), D | SQL] structDLToSMFS(SDL) .
+  eq structDLToSMFS(sdwrap(SQL,(D : C)) SDL) = [getDeclaratorName(D), D | SQL] structDLToSMFS(SDL) .
+  eq structDLToSMFS(empty) = empty .
+endfm
+
+***
+*** State components for analysis.
+***
+fmod STATE is
+  pr ENVIRONMENT .
+  pr COMPUTATION .
+  pr OUTPUT .
+  pr VALUE .
+  pr STRUCT-MAP .
+    
+  sort State .
+  
+  op noState : -> State .
+  op __ : State State -> State [comm assoc id: noState] .
+
+  op k : Computation -> State [format (r! o)] .
+  op env : Env -> State [format (r! o)] . 
+  op nextLoc : Nat -> State [format (r! o)] .
+  op structMap : StructMapSet -> State [format (r! o)] .   
+  op out : OutputSet -> State [format (r! o)] .
+  op currLn : Int -> State [format (r! o)] . --- current line number
+  op truncated : Bool -> State [format (r! o)] .
+  op envs : EnvSet -> State [format (r! o)] . 
+  op origenv : Env -> State [format (r! o)] .
+endfm
+
+***
+*** Helping ops which can be used in states; generic operators
+*** for various types of C values, such as pointers or arrays.
+***
+fmod HELPERS is
+  including STATE .
+  including ENVIRONMENT .
+  including POLICY-SYNTAX .
+    
+  vars I I' : Int . var S : String . var K : Computation .
+  var O : OutputSet . var ES : EnvSet . vars X X' : Identifier .
+  vars L L' : Location . vars V V' : Value . var N : Nat .
+  var Vl : ValueList . var Env : Env . var EI : EnvItem .
+  var Ll : LocationList .
+  
+  ***
+  *** Issue a warning message
+  ***
+  op issueWarning : Int String -> ComputationItem .
+  op issueWarning : Int String EnvSet -> ComputationItem .
+  eq k(issueWarning(I,S) -> K) currLn(I') out(O) =
+     k(K) currLn(I') out(O warning(level(I) ln(I') msg(S))) .
+  eq k(issueWarning(I,S,ES) -> K) currLn(I') out(O) =
+     k(K) currLn(I') out(O warning(level(I) ln(I') msg(S) wenv(ES))) .
+
+  ***
+  *** Look up a value based on an identifier.
+  ***
+  op lookup : Identifier -> ComputationItem .
+  
+  ***
+  *** Look up a value based on a location.
+  ***
+  op llookup : Location -> ComputationItem .
+  
+  ***
+  *** Represents the case where no location has been assigned.
+  ***
+  op noloc : -> Location .
+  
+  ***
+  *** For unnamed environment entries. For instance, the value
+  *** pointed to by a pointer does not have a name.
+  ***
+  op @unnamed : -> Identifier .
+  
+  op isUnknown : Identifier -> Bool .
+  eq isUnknown(@unknown) = true .
+  eq isUnknown(X) = false [owise] .
+
+  ***
+  *** Assign a value to a location (Policy-Specific)
+  ***
+  sorts AssignFlag AssignFlagList .
+  subsort AssignFlag < AssignFlagList .
+  op emptyAF : -> AssignFlagList .
+  op __ : AssignFlagList AssignFlagList -> AssignFlagList [assoc id: emptyAF] .
+  
+  var AFL : AssignFlagList .
+    
+  op assign : Location AssignFlagList -> ComputationItem .
+        
+  ***
+  *** Assign value to an existing identifier, leaving the
+  *** value on the computation so something can use it later.
+  ***    
+  op assignKeep : Location AssignFlagList -> ComputationItem .
+  eq k(val(V) -> assignKeep(L,AFL) -> K) =
+     k(val(V) -> assign(L,AFL) -> val(V) -> K) .
+     
+  ***
+  *** A value wrapper, allowing a location and value to be
+  *** paired. Useful for when the location may be needed, for
+  *** instance on operations like x += 5 where may want to
+  *** get the current value and get the location to reassign.
+  ***
+  op lvp : Location Value -> Value .
+
+  ***
+  *** Other value wrappers. ptr is used to turn a location into
+  *** a value, while fhandle represents the address of a function.
+  ***
+  op ptr : Location -> Value .
+  op fhandle : -> Value .
+  
+  ***
+  *** Strip extra information from a value. May be overridden 
+  *** in other modules. Useful for when values are packaged
+  *** with other information, such as locations.
+  ***
+  op strip : Value -> Value .
+  eq strip(lvp(L,V)) = V .
+  eq strip(V) = V [owise] .
+  
+  ***
+  *** Strip all values in a list of values
+  ***
+  op stripList : ValueList -> ValueList .
+  eq stripList(V,Vl) = strip(V), stripList(Vl) .
+  eq stripList(empty) = empty .
+  
+  ***
+  *** Indicate if a value represents a pointer.
+  ***
+  op isPointerVal : Value -> Bool .
+  eq isPointerVal(lvp(L,ptr(L'))) = true .
+  eq isPointerVal(ptr(L)) = true .
+  eq isPointerVal(V) = false [owise] .
+                        
+  ***
+  *** Sorts and operations used for the symbolic
+  *** representation of structures and unions. Each
+  *** field is a pair of name/location; other information
+  *** such as field type (in typed models) may be stored
+  *** at the specified location, but is not stored here.
+  ***
+  sorts SField SFieldSet .
+  subsort SField < SFieldSet .
+  var SFS : SFieldSet .
+    
+  op nil : -> SFieldSet .
+  op sfield : Identifier Location -> SField .
+  op __ : SFieldSet SFieldSet -> SFieldSet [assoc comm id: nil] .
+  op struct : Identifier SFieldSet -> Value .  
+  op union : Identifier SFieldSet -> Value .
+  
+  ***
+  *** Sort used to represent an array. Arrays are represented
+  *** similarly to pointers, which allows us to treat them as
+  *** pointers when needed by the C semantics.
+  ***
+  op arr : Location -> Value .  
+  
+  ***
+  *** Make an abstract declarator "concrete", which will allow us to use
+  *** the functionality from DECLARATION-SYNTAX-HELPERS with it. The equations
+  *** for arrays are a bit more complex than needed, but they prevent parsing
+  *** warning messages from being generated.
+  ***
+  var AD : AbstractDeclarator . var P : Pointer . var C : Constant . var D : Declarator .
+  op makeConcrete : AbstractDeclarator -> Declarator .
+  eq makeConcrete(P) = P did(@unnamed) .
+  eq makeConcrete(P AD) = P makeConcrete(AD) .
+  eq makeConcrete(`(_`)(AD)) = makeConcrete(AD) .
+  eq makeConcrete(_`[_`](AD,C)) = makeArrDecl(makeConcrete(AD),C) .
+  eq makeConcrete(_`[`](AD)) = makeArrDecl(makeConcrete(AD)) .
+  eq makeConcrete([ C ]) =  did(@unnamed) [ C ] .
+  eq makeConcrete( [] ) = did(@unnamed) [] . 
+  
+  op makeArrDecl : Declarator -> Declarator .
+  op makeArrDecl : Declarator Constant -> Declarator .  
+  eq makeArrDecl(D) = (D []) .
+  eq makeArrDecl(D,C) = (D [ C ]) .     
+
+  ***
+  *** Given a set of structure fields, return a list of locations
+  *** used by the fields.
+  ***
+  op getStructLocs : SFieldSet -> LocationList .
+  eq getStructLocs(sfield(X,L) SFS) = L, getStructLocs(SFS) .
+  eq getStructLocs(nil) = empty .
+
+  ***
+  *** Is the given name in the environment?
+  ***
+  op isNameInEnv : Identifier Env -> Bool .
+  eq isNameInEnv(X,(Env [X,L,V,EI])) = true .
+  eq isNameInEnv(X,Env) = false [owise] .       
+endfm
+
+fmod LOCK-HELPERS is
+  including HELPERS .
+  including VALUE-LOCK-ENVIRONMENT .
+  
+  var B : Bool . vars L L' : Location . var K : Computation .
+  var V : Value . var EI : EnvItem . var Env : Env .
+  vars X X' : Identifier . var Ll : LocationList .
+  var SFS : SFieldSet .
+    
+  ***
+  *** Assign a value to a locked location (Policy-Specific)
+  ***
+  op assignLock : Location -> ComputationItem .
+		
+  ***
+  *** Given a location L, lock the value at that location.
+  ***
+  op lockValAt : Location -> ComputationItem .
+  
+  eq k(lockValAt(L) -> K) env(Env [X,L,V,EI vlock(B)]) = 
+     k(K) env(Env [X,L,V,EI vlock(true)]) .
+  
+  ***
+  *** Given a location L, lock the values reachable through that location. For instance, for a
+  *** structure, we also need to lock structure fields and other locations reachable through
+  *** those fields. Since we do this any time we assign to a locked location, we don't
+  *** follow through already-locked values, preventing cycles.
+  ***
+  *** The cases below are for (respectively) pointers, arrays, structures, unions,
+  *** already locked values, and not-locked scalar values (the otherwise case). The final
+  *** case terminates locking.
+  ***
+  op lockValsThrough : LocationList -> ComputationItem .
+  
+  eq k(lockValsThrough(L,Ll) -> K) env(Env [X,L,ptr(L'),EI vlock(false)]) =
+     k(lockValsThrough(L',Ll) -> K) env(Env [X,L,ptr(L'),EI vlock(true)]) .
+  eq k(lockValsThrough(L,Ll) -> K) env(Env [X,L,arr(L'),EI vlock(false)]) =
+     k(lockValsThrough(L',Ll) -> K) env(Env [X,L,arr(L'),EI vlock(true)]) .
+  eq k(lockValsThrough(L,Ll) -> K) env(Env [X,L,struct(X',SFS),EI vlock(false)]) =
+     k(lockValsThrough(Ll,getStructLocs(SFS)) -> K) env(Env [X,L,struct(X',SFS),EI vlock(true)]) .
+  eq k(lockValsThrough(L,Ll) -> K) env(Env [X,L,union(X',SFS),EI vlock(false)]) =
+     k(lockValsThrough(Ll,getStructLocs(SFS)) -> K) env(Env [X,L,union(X',SFS),EI vlock(true)]) .
+  eq k(lockValsThrough(L,Ll) -> K) env(Env [X,L,V,EI vlock(false)]) =
+     k(lockValsThrough(Ll) -> K) env(Env [X,L,V,EI vlock(true)]) .
+  eq k(lockValsThrough(L,Ll) -> K) env(Env [X,L,V,EI vlock(true)]) =
+     k(lockValsThrough(Ll) -> K) env(Env [X,L,V,EI vlock(true)]) .
+  eq k(lockValsThrough(empty) -> K) = k(K) .
+
+  ***
+  *** The inverse of the above operation: unlock already locked values.
+  ***
+  op unlockValsThrough : LocationList -> ComputationItem .
+  
+  eq k(unlockValsThrough(L,Ll) -> K) env(Env [X,L,ptr(L'),EI vlock(true)]) =
+     k(unlockValsThrough(L',Ll) -> K) env(Env [X,L,ptr(L'),EI vlock(false)]) .
+  eq k(unlockValsThrough(L,Ll) -> K) env(Env [X,L,arr(L'),EI vlock(true)]) =
+     k(unlockValsThrough(L',Ll) -> K) env(Env [X,L,arr(L'),EI vlock(false)]) .
+  eq k(unlockValsThrough(L,Ll) -> K) env(Env [X,L,struct(X',SFS),EI vlock(true)]) =
+     k(unlockValsThrough(Ll,getStructLocs(SFS)) -> K) env(Env [X,L,struct(X',SFS),EI vlock(false)]) .
+  eq k(unlockValsThrough(L,Ll) -> K) env(Env [X,L,union(X',SFS),EI vlock(true)]) =
+     k(unlockValsThrough(Ll,getStructLocs(SFS)) -> K) env(Env [X,L,union(X',SFS),EI vlock(false)]) .
+  eq k(unlockValsThrough(L,Ll) -> K) env(Env [X,L,V,EI vlock(true)]) =
+     k(unlockValsThrough(Ll) -> K) env(Env [X,L,V,EI vlock(false)]) .
+  eq k(unlockValsThrough(L,Ll) -> K) env(Env [X,L,V,EI vlock(false)]) =
+     k(unlockValsThrough(Ll) -> K) env(Env [X,L,V,EI vlock(false)]) .
+  eq k(unlockValsThrough(empty) -> K) = k(K) .
+    
+  ***
+  *** Lock values reachable past a location. This is similar to the above, but
+  *** doesn't include the starting location. 
+  ***  
+  op lockValsPast : Location -> ComputationItem .
+  
+  eq k(lockValsPast(L) -> K) env(Env [X,L,ptr(L'),EI]) =
+     k(lockValsThrough(L') -> K) env(Env [X,L,ptr(L'),EI]) .
+  eq k(lockValsPast(L) -> K) env(Env [X,L,arr(L'),EI]) =
+     k(lockValsThrough(L') -> K) env(Env [X,L,arr(L'),EI]) .
+  eq k(lockValsPast(L) -> K) env(Env [X,L,struct(X',SFS),EI]) =
+     k(lockValsThrough(getStructLocs(SFS)) -> K) env(Env [X,L,struct(X',SFS),EI]) .
+  eq k(lockValsPast(L) -> K) env(Env [X,L,union(X',SFS),EI]) =
+     k(lockValsThrough(getStructLocs(SFS)) -> K) env(Env [X,L,union(X',SFS),EI]) .
+  eq k(lockValsPast(L) -> K) env(Env [X,L,V,EI]) = 
+     k(K) env(Env [X,L,V,EI]) [owise] .
+     
+  ***
+  *** The inverse of the above operation.
+  ***
+  op unlockValsPast : Location -> ComputationItem .
+  
+  eq k(unlockValsPast(L) -> K) env(Env [X,L,ptr(L'),EI]) =
+     k(unlockValsThrough(L') -> K) env(Env [X,L,ptr(L'),EI]) .
+  eq k(unlockValsPast(L) -> K) env(Env [X,L,arr(L'),EI]) =
+     k(unlockValsThrough(L') -> K) env(Env [X,L,arr(L'),EI]) .
+  eq k(unlockValsPast(L) -> K) env(Env [X,L,struct(X',SFS),EI]) =
+     k(unlockValsThrough(getStructLocs(SFS)) -> K) env(Env [X,L,struct(X',SFS),EI]) .
+  eq k(unlockValsPast(L) -> K) env(Env [X,L,union(X',SFS),EI]) =
+     k(unlockValsThrough(getStructLocs(SFS)) -> K) env(Env [X,L,union(X',SFS),EI]) .
+  eq k(unlockValsPast(L) -> K) env(Env [X,L,V,EI]) = 
+     k(K) env(Env [X,L,V,EI]) [owise] .
+     
+endfm
+
+fmod FINAL-HELPERS is
+  including HELPERS .
+  including FINAL-VALUE-ENVIRONMENT .
+  
+  var B : Bool . vars L L' : Location . var K : Computation .
+  var V : Value . var EI : EnvItem . var Env : Env .
+  vars X X' : Identifier . var Ll : LocationList .
+  var SFS : SFieldSet .
+    
+  ***
+  *** Check compatability for assignment
+  ***
+  op assignAllowed : Value Location Env -> Bool .
+  
+  ***
+  *** Determine the value that will be assigned when assignment is allowed.
+  ***
+  op assignValue : Value Location Env -> Value .
+		
+  ***
+  *** Determine the error message that will be generated when assignment
+  *** is now allowed.
+  ***
+  op genFinalErrorMsg : Value Location Env -> String .
+  		
+  ***
+  *** Given a location L, make that location final
+  ***
+  op finalizeValAt : Location -> ComputationItem .
+  
+  eq k(finalizeValAt(L) -> K) env(Env [X,L,V,EI final(B)]) = 
+     k(K) env(Env [X,L,V,EI final(true)]) .
+  
+  ***
+  *** Given a location L, finalize the values reachable through that location. 
+  *** For instance, for a structure, we also need to finalize structure fields 
+  *** and other locations reachable through those fields. 
+  ***
+  *** The cases below are for (respectively) pointers, arrays, structures, unions,
+  *** already final values, and not-final scalar values (the otherwise case). The 
+  *** last case terminates locking.
+  ***
+  op finalizeValsThrough : LocationList -> ComputationItem .
+  
+  eq k(finalizeValsThrough(L,Ll) -> K) env(Env [X,L,ptr(L'),EI final(false)]) =
+     k(finalizeValsThrough(L',Ll) -> K) env(Env [X,L,ptr(L'),EI final(true)]) .
+  eq k(finalizeValsThrough(L,Ll) -> K) env(Env [X,L,arr(L'),EI final(false)]) =
+     k(finalizeValsThrough(L',Ll) -> K) env(Env [X,L,arr(L'),EI final(true)]) .
+  eq k(finalizeValsThrough(L,Ll) -> K) env(Env [X,L,struct(X',SFS),EI final(false)]) =
+     k(finalizeValsThrough(Ll,getStructLocs(SFS)) -> K) env(Env [X,L,struct(X',SFS),EI final(true)]) .
+  eq k(finalizeValsThrough(L,Ll) -> K) env(Env [X,L,union(X',SFS),EI final(false)]) =
+     k(finalizeValsThrough(Ll,getStructLocs(SFS)) -> K) env(Env [X,L,union(X',SFS),EI final(true)]) .
+  eq k(finalizeValsThrough(L,Ll) -> K) env(Env [X,L,V,EI final(false)]) =
+     k(finalizeValsThrough(Ll) -> K) env(Env [X,L,V,EI final(true)]) .
+  eq k(finalizeValsThrough(L,Ll) -> K) env(Env [X,L,V,EI final(true)]) =
+     k(finalizeValsThrough(Ll) -> K) env(Env [X,L,V,EI final(true)]) .
+  eq k(finalizeValsThrough(empty) -> K) = k(K) .
+  
+  ***
+  *** Lock values reachable past a location. This is similar to the above, but
+  *** doesn't include the starting location. 
+  ***  
+  op finalizeValsPast : Location -> ComputationItem .
+  
+  eq k(finalizeValsPast(L) -> K) env(Env [X,L,ptr(L'),EI]) =
+     k(finalizeValsThrough(L') -> K) env(Env [X,L,ptr(L'),EI]) .
+  eq k(finalizeValsPast(L) -> K) env(Env [X,L,arr(L'),EI]) =
+     k(finalizeValsThrough(L') -> K) env(Env [X,L,arr(L'),EI]) .
+  eq k(finalizeValsPast(L) -> K) env(Env [X,L,struct(X',SFS),EI]) =
+     k(finalizeValsThrough(getStructLocs(SFS)) -> K) env(Env [X,L,struct(X',SFS),EI]) .
+  eq k(finalizeValsPast(L) -> K) env(Env [X,L,union(X',SFS),EI]) =
+     k(finalizeValsThrough(getStructLocs(SFS)) -> K) env(Env [X,L,union(X',SFS),EI]) .
+  eq k(finalizeValsPast(L) -> K) env(Env [X,L,V,EI]) = 
+     k(K) env(Env [X,L,V,EI]) [owise] .
+endfm
+
+
+*****************************************************************************
+***
+*** Semantics modules.
+***
+*** These modules provide generic semantics for the C pluggable policy
+*** framework. Policy-specific semantics are provided below.
+***
+*****************************************************************************
+
+***
+*** Semantics for expressions. This handles general processing of
+*** expression lists. This is more complex than it needs to be
+*** since we do not always evaluate at the top of the continuation,
+*** but it provides more potential parallelism.
+***
+fmod EXP-SEMANTICS-GENERIC is
+  including STATE .
+  including EXP-SYNTAX .
+  
+  op exp : ExpList -> ComputationItem .
+  
+  var E : Exp . var El : ExpList .
+  vars V V' : Value . vars Vl Vl' : ValueList .
+  var K : Computation . vars Cs Cs' : ComputationList .
+  var X : Identifier . var L : Location . var Env : Env .
+  var N : Nat .
+
+  ***
+  *** So we can maintain parallelism in evaluation, put the
+  *** expression list into a continuation list structure that
+  *** will allow us to collect values in the correct order.
+  ***  
+  sort ComputationList .
+  subsort Computation < ComputationList .
+  
+  op emptyCL : -> ComputationList .
+  op _,_ : ComputationList ComputationList -> ComputationList [assoc id: emptyCL] .
+  op clist : ComputationList -> Computation .
+  op {_|_} : ComputationList ComputationList -> Computation .
+  op kexp : Exp -> Computation .
+
+  ***
+  *** An empty expression list always evaluates to an empty value list. This can
+  *** happen on constructor invocations, method invocations, etc, where we have
+  *** no parameters.
+  ***
+  eq k(exp(empty) -> K) = k(val(empty) -> K) .
+   
+  *** First, if we have an expression list, put it into
+  *** the continuation list  
+ ceq k(exp(E,El) -> K) = k(clist(kexp(E),kexp(El)) -> K) if El =/= empty .
+
+  ***
+  *** Now, stretch the expression list out to the write,
+  *** turning terms into individual expression continuations
+  *** as we go.
+  *** 
+ ceq clist(Cs,kexp(E,El),Cs') = clist(Cs,kexp(E),kexp(El),Cs') if El =/= empty .
+ 
+  ***
+  *** Collapse any internal value continuations into single continuations
+  *** 
+  eq clist(Cs,val(Vl),val(Vl'),Cs') = clist(Cs,val(Vl,Vl'),Cs') .
+  
+  ***
+  *** If we just have a value list, get rid of the wrapper
+  ***
+  eq clist(val(Vl)) = val(Vl) .  
+  
+  ***
+  *** Finally, take out any expressions and evaluate them -- make
+  *** sure we only do this one at a time, and make sure we do this
+  *** in order (for things like function parameters, for instance,
+  *** we want a left to right evaluation order)
+  ***
+  eq clist(kexp(E),Cs) = exp(E) -> {emptyCL | Cs} .
+  eq clist(val(Vl),kexp(E),Cs) = exp(E) -> {val(Vl) | Cs} .
+  eq val(V) -> {val(Vl) | Cs} = clist(val(Vl,V),Cs) .
+  eq val(V) -> {emptyCL | Cs} = clist(val(V),Cs) .
+ 
+  ***
+  *** In some cases we still need the rule collapsing back lists
+  *** of values, so include it here.
+  ***
+  eq val(Vl) -> val(Vl') = val(Vl,Vl') . 
+
+  ***
+  *** Value discard
+  ***
+  op discard : -> ComputationItem .
+  eq k(val(Vl) -> discard -> K) = k(K) .
+  eq k(discard -> K) = k(K) .
+endfm
+
+***
+*** Provide abstract interpretation-like semantics for C expressions.
+*** This consists mostly of dispatching out pieces for evaluation;
+*** making sense of the evaluation results is in another module, and
+*** is policy specific.
+***
+fmod EXP-SYMBOLIC-SEMANTICS-SPLIT is
+  including EXP-SEMANTICS-GENERIC .
+
+  vars E E' E'' : Exp . var K : Computation .
+  var TN : TypeName . vars X X' : Identifier .
+  var Es Es' : ExpList . 	
+  
+  ***  
+  *** Arithmetic operations. The first four
+  *** are postfix and prefix increment and
+  *** decrement operations.
+  ***
+  op post++ : -> ComputationItem .
+  eq exp(E ++) = exp(E) -> post++ .
+  
+  op post-- : -> ComputationItem .
+  eq exp(E --) = exp(E) -> post-- .
+  
+  op pre++ : -> ComputationItem .
+  eq exp(++ E) = exp(E) -> pre++ .
+  
+  op pre-- : -> ComputationItem .
+  eq exp(-- E) = exp(E) -> pre-- .
+
+  ***
+  *** Unary +, given a different name to ensure 
+  *** it doesn't get confused with binary +.
+  ***
+  op un+ : -> ComputationItem .  
+  eq exp(+ E) = exp(E) -> un+ .
+  
+  ***
+  *** Unary -, given a different  name to ensure 
+  *** it doesn't get confused with binary -.
+  ***
+  op un- : -> ComputationItem .
+  eq exp(- E) = exp(E) -> un- .
+  
+  op * : -> ComputationItem .
+  eq exp(E * E') = exp(E,E') -> * .
+  
+  op / : -> ComputationItem .
+  eq exp(E / E') = exp(E,E') -> / .
+  
+  op % : -> ComputationItem .
+  eq exp(E % E') = exp(E,E') -> % .
+  
+  op + : -> ComputationItem .
+  eq exp(E + E') = exp(E,E') -> + .
+  
+  op - : -> ComputationItem .
+  eq exp(E - E') = exp(E,E') -> - .
+  
+  op >> : -> ComputationItem .
+  eq exp(E >> E') = exp(E,E') -> >> .
+  
+  op << : -> ComputationItem .
+  eq exp(E << E') = exp(E,E') -> << .
+  
+  op & : -> ComputationItem .
+  eq exp(E & E') = exp(E,E') -> & .
+  
+  op ^ : -> ComputationItem .
+  eq exp(E ^ E') = exp(E,E') -> ^ .
+  
+  op | : -> ComputationItem .
+  eq exp(E | E') = exp(E,E') -> | .
+  
+  op ! : -> ComputationItem .
+  eq exp(! E) = exp(E) -> ! .
+  
+  op && : -> ComputationItem .
+  eq exp(E && E') = exp(E,E') -> && .
+  
+  op || : -> ComputationItem .
+  eq exp(E || E') = exp(E,E') -> || .
+  
+  op < : -> ComputationItem .
+  eq exp(E < E') = exp(E,E') -> < .
+  
+  op > : -> ComputationItem .
+  eq exp(E > E') = exp(E,E') -> > .
+  
+  op <= : -> ComputationItem .
+  eq exp(E <= E') = exp(E,E') -> <= .
+  
+  op >= : -> ComputationItem .
+  eq exp(E >= E') = exp(E,E') -> >= .
+  
+  ***
+  *** This is just the "==" operation; since it also is defined 
+  *** in Maude, it is cleanest to give it a different name.
+  ***
+  op c== : -> ComputationItem .
+  eq exp(E c== E') = exp(E,E') -> c== .
+  
+  op != : -> ComputationItem .
+  eq exp(E != E') = exp(E,E') -> != .
+
+  ***
+  *** NOTE: CIL will turn this into a conditional statement,
+  *** so we won't actually see this expression in practice.
+  *** This is good for us, since this is the only expression
+  *** that allows branching, which could complicate path-sensitive
+  *** analyses.
+  ***  
+  ***op ?: : -> ComputationItem .
+  ***eq exp(E ? E' : E'') = exp(E,E',E'') -> ?: .
+  
+  op = : -> ComputationItem .
+  eq exp(E = E') = exp(E,E') -> = .
+  
+  op += : -> ComputationItem .
+  eq exp(E += E') = exp(E,E') -> += .
+  
+  op -= : -> ComputationItem .
+  eq exp(E -= E') = exp(E,E') -> -= .
+  
+  op *= : -> ComputationItem .
+  eq exp(E *= E') = exp(E,E') -> *= .
+  
+  op /= : -> ComputationItem .
+  eq exp(E /= E') = exp(E,E') -> /= .
+  
+  op %= : -> ComputationItem .
+  eq exp(E %= E') = exp(E,E') -> %= .
+  
+  op >>= : -> ComputationItem .
+  eq exp(E >>= E') = exp(E,E') -> >>= .
+  
+  op <<= : -> ComputationItem .
+  eq exp(E <<= E') = exp(E,E') -> <<= .
+  
+  op ^= : -> ComputationItem .
+  eq exp(E ^= E') = exp(E,E') -> ^= .
+  
+  op &= : -> ComputationItem .
+  eq exp(E &= E') = exp(E,E') -> &= .
+  
+  op |= : -> ComputationItem .
+  eq exp(E |= E') = exp(E,E') -> |= .
+
+  ***
+  *** Address of operator: &
+  ***
+  op &addr : -> ComputationItem .
+  eq exp(& E) = exp(E) -> &addr .
+  
+  ***
+  *** Pointer dereference operator: *
+  ***
+  op *addr : -> ComputationItem .
+  eq exp(* E) = exp(E) -> *addr .
+  
+  ***
+  *** This second equation is a simplification; in C, sizeof(E) is 
+  *** the size of the type of E, but E is not actually evaluated. 
+  *** Since we don't currently keep around type information on expressions, 
+  *** just  put in int for now, since it's actually the effect of executing
+  *** E (or not) that we are interested in. If we actually need the
+  *** type information in an analysis, we will need to come back and
+  *** change this. This is true for alignof as well, which is a gcc
+  *** extension.
+  ***
+  op sof : TypeName -> ComputationItem .
+  eq exp(sizeof(TN)) = sof(TN)  .
+  eq exp(sizeof(E)) = sof(int) .
+  
+  op alignof : TypeName -> ComputationItem .
+  eq exp(#alignof(TN)) = alignof(TN) .
+  eq exp(#alignof(E)) = alignof(int) .
+  
+  ***
+  *** Array lookup
+  ***
+  op arr : -> ComputationItem .
+  eq exp(E [ E' ]) = exp(E,E') -> arr .
+  
+  ***
+  *** Structure field reference, first with a . and second
+  *** with an ->
+  ***
+  op str1 : Identifier -> ComputationItem .
+  eq exp( E . X) = exp(E) -> str1(X) .
+  
+  op str2 : Identifier -> ComputationItem .
+  eq exp( E -> X) = exp(E) -> str2(X) .
+  
+  ***
+  *** For completeness -- currently we inline preconditions and
+  *** postconditions at call sites, so we don't actually see any
+  *** function calls. Comment out for now.
+  ***
+  ***op fcall : -> ComputationItem .
+  ***eq exp(E ()) = exp(E) -> fcall .
+  ***eq exp(E (Es)) = exp(E,Es) -> fcall .
+  
+  ***
+  *** Type-casts
+  ***
+  op cast : TypeName -> ComputationItem .
+  eq exp( (TN) E) = exp(E) -> cast(TN) .
+  
+  ***
+  *** Wrappers to indicate which version of a value we want;
+  *** @crrnt references the current version of a value, and is
+  *** used in postconditions, where using the initial (on function
+  *** entry) version is the default; @old references the initial
+  *** version of the value, and is useful elsewhere, where using
+  *** the current version is the default.
+  ***
+  op @crrnt : Exp -> Exp .
+  op @old : Exp -> Exp .
+endfm
+
+***
+*** Policy-generic lookups. These are for constructs like
+*** pointers or structures, where we return locations to
+*** values which may be policy-specific.
+***
+fmod EXP-SEMANTICS-LOOKUP is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including HELPERS .
+
+  vars X X' : Identifier . var K : Computation .
+  vars L L' : Location . var DSL : DeclarationSpecifierList .
+  var D : Declarator . var Env : Env . var SFS : SFieldSet .
+  var V : Value . var Q : Qid . var EI : EnvItem .
+  
+  ***
+  *** First, change over lookups for n('Q) to ng('Q), nt('Q), or nf('Q),
+  *** whichever is in the environment. We always have the correct version
+  *** in the environment, but sometimes we don't in asserts or assumes
+  *** because we don't always have the context to decide this during the
+  *** translation.
+  ***
+  eq k(lookup(n(Q)) ->  K) env(Env [nt(Q),L,V,EI]) =
+     k(lookup(nt(Q)) -> K) env(Env [nt(Q),L,V,EI]) .
+     
+  eq k(lookup(n(Q)) ->  K) env(Env [nf(Q),L,V,EI]) =
+     k(lookup(nf(Q)) -> K) env(Env [nf(Q),L,V,EI]) .
+
+  eq k(lookup(n(Q)) ->  K) env(Env [ng(Q),L,V,EI]) =
+     k(lookup(ng(Q)) -> K) env(Env [ng(Q),L,V,EI]) .
+
+  eq k(lookup(n(Q)) ->  K) env(Env [nfun(Q),L,V,EI]) =
+     k(lookup(nfun(Q)) -> K) env(Env [nfun(Q),L,V,EI]) .
+               
+  ***
+  *** Return the appropriate value type, which will be used for further lookups.
+  ***
+  eq k(lookup(X) -> K) env(Env [X,L,struct(X',SFS),EI]) =
+     k(val(lvp(L,struct(X',SFS))) -> K) env(Env [X,L,struct(X',SFS),EI]) .
+     
+  eq k(lookup(X) -> K) env(Env [X,L,union(X',SFS),EI]) =
+     k(val(lvp(L,union(X',SFS))) -> K) env(Env [X,L,union(X',SFS),EI]) .
+
+  eq k(lookup(X) -> K) env(Env [X,L,ptr(L'),EI]) =
+     k(val(lvp(L,ptr(L'))) -> K) env(Env [X,L,ptr(L'),EI]) .
+     
+  eq k(lookup(X) -> K) env(Env [X,L,arr(L'),EI]) =
+     k(val(lvp(L,arr(L'))) -> K) env(Env [X,L,arr(L'),EI]) .
+
+  ***
+  *** Comes back in cases where we have no knowledge, like return
+  *** values from functions with no postconditions.
+  ***
+  op unkv : -> Value .
+  eq k(lookup(@unknown) -> K) = k(val(unkv) -> K)  .
+               
+  ***
+  *** Look up locations instead of names. The same rules as above except 
+  *** for this distinction.
+  ***
+  eq k(llookup(L) -> K) env(Env [X,L,struct(X',SFS),EI]) =
+     k(val(lvp(L,struct(X',SFS))) -> K) env(Env [X,L,struct(X',SFS),EI]) .
+     
+  eq k(llookup(L) -> K) env(Env [X,L,union(X',SFS),EI]) =
+     k(val(lvp(L,union(X',SFS))) -> K) env(Env [X,L,union(X',SFS),EI]) .
+
+  eq k(llookup(L) -> K) env(Env [X,L,ptr(L'),EI]) =
+     k(val(lvp(L,ptr(L'))) -> K) env(Env [X,L,ptr(L'),EI]) .
+     
+  eq k(llookup(L) -> K) env(Env [X,L,arr(L'),EI]) =
+     k(val(lvp(L,arr(L'))) -> K) env(Env [X,L,arr(L'),EI]) .
+     
+endfm
+
+***
+*** Generic allocation semantics. Used to symbolically allocate
+*** storage used by C values "on the fly", since in many cases
+*** this storage can't be built up front.
+***
+fmod EXP-SEMANTICS-ALLOCATION is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including HELPERS .
+  including DECLARATION-SYNTAX-HELPERS .
+  
+  op allocPtr : DeclarationSpecifierList Declarator -> ComputationItem .
+  op allocArray : DeclarationSpecifierList Declarator -> ComputationItem .
+  op allocStruct : DeclarationSpecifierList Declarator -> ComputationItem .
+  op allocUnion : DeclarationSpecifierList Declarator -> ComputationItem .
+  op allocScalar : DeclarationSpecifierList Declarator -> ComputationItem .
+  op allocEnum : DeclarationSpecifierList Declarator -> ComputationItem .
+  op allocFun : DeclarationSpecifierList Declarator -> ComputationItem .
+  
+  ***
+  *** Place-holder value; used until a real value is assigned
+  ***
+  op noval : -> Value .
+  
+  ***
+  *** Location -- trigger allocation when this is hit
+  ***
+  op triggerAlloc : -> Location .
+
+  ***
+  *** Store an allocated value in a given location; similar to assign,
+  *** but this is defined here (not policy specific) and doesn't have
+  *** restrictions based on locking, etc.
+  ***
+  vars V V' : Value . var L : Location . var K : Computation .
+  var EI : EnvItem . var X : Identifier . var Env : Env .
+    
+  op storeValIn : Location -> ComputationItem .
+  eq k(val(V) -> storeValIn(L) -> K) env(Env [X,L,V',EI]) =
+     k(                           K) env(Env [X,L,V,EI] ) .
+     
+  ***
+  *** POLICY HOOK: Perform additional setup after the initial setup
+  *** by the policy-generic allocation code.
+  ***
+  op falloc : DeclarationSpecifierList Declarator Location -> ComputationItem .
+  op sfalloc : Location -> ComputationItem .
+endfm
+
+***
+*** Generic allocation semantics. Used to symbolically allocate
+*** storage used by C values "on the fly", since in many cases
+*** this storage can't be built up front.
+***
+fmod EXP-SEMANTICS-ALLOCATION-WLOCKS is
+  including EXP-SEMANTICS-ALLOCATION .
+  including LOCK-HELPERS .
+  
+  var Ll : LocationList . var K : Computation .
+  var Env : Env . 
+  
+  ***
+  *** Add functionality to bypass this trigger allocation location
+  *** when we are locking locations, since it doesn't really point
+  *** to anything yet.
+  ***  
+  eq k(lockValsThrough(triggerAlloc,Ll) -> K) env(Env) = 
+     k(lockValsThrough(Ll) -> K) env(Env) .
+  eq k(lockValsPast(triggerAlloc) -> K) env(Env) =
+     k(K) env(Env) .
+endfm
+
+***
+*** Generic allocation semantics. Used to symbolically allocate
+*** storage used by C values "on the fly", since in many cases
+*** this storage can't be built up front.
+***
+fmod EXP-SEMANTICS-ALLOCATION-WFINALIZE is
+  including EXP-SEMANTICS-ALLOCATION .
+  including FINAL-HELPERS .
+    
+  var Ll : LocationList . var K : Computation .
+  var Env : Env . 
+  
+  ***
+  *** Add functionality to bypass this trigger allocation location
+  *** when we are finalizing locations, since it doesn't really point
+  *** to anything yet.
+  ***  
+  eq k(finalizeValsThrough(triggerAlloc,Ll) -> K) env(Env) = 
+     k(finalizeValsThrough(Ll) -> K) env(Env) .
+  eq k(finalizeValsPast(triggerAlloc) -> K) env(Env) =
+     k(K) env(Env) .
+endfm
+  
+***
+*** Dynamically build pointers. Pointers are just wrappers referring
+*** to other locations. Pointers to pointers will have multiple
+*** levels of this: int *x will be ptr(L), where L will hold a
+*** value, while int **x, will be ptr(L), where L is ptr(L'),
+*** and L' holds a value, etc.
+***
+fmod EXP-SEMANTICS-ALLOC-PTR is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including EXP-SEMANTICS-ALLOCATION .
+  including HELPERS .
+  including TYPED-ENVIRONMENT .
+
+  vars X X' : Identifier . var K : Computation . 
+  vars L L' : Location . var DSL : DeclarationSpecifierList .
+  vars D D' : Declarator . var Env : Env . var SFS : SFieldSet .
+  var N : Nat . var EI : EnvItem .
+  
+  ***
+  *** If we have more than one level of indirection, allocate them all until
+  *** we reach an actual non-pointer value.
+  ***
+ ceq k(allocPtr(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocPtr(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(ptr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ getPointerDeclaratorDepth(D) > 1 /\ D' := stripPointerDeclByOne(D) .
+     
+  ***
+  *** One we have just one level of indirection, we actually need to allocate whatever it is that we are 
+  *** pointing to. These cases handle structures, unions, scalars, enums, and functions, respectively. 
+  *** Note that structures and unions don't allocate through pointers to other structures or unions, 
+  *** so we won't end up cycling; see EXP-SEMANTICS-ALLOC-STRUCT and EXP-SEMANTICS-ALLOC-UNION for details.
+  ***     
+ ceq k(allocPtr(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocStruct(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(ptr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ getPointerDeclaratorDepth(D) == 1 /\ isStructDSL(DSL) /\ D' := stripPointerDeclByOne(D) .
+
+ ceq k(allocPtr(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocUnion(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(ptr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ getPointerDeclaratorDepth(D) == 1 /\ isUnionDSL(DSL) /\ D' := stripPointerDeclByOne(D) .
+
+ ceq k(allocPtr(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocScalar(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(ptr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ getPointerDeclaratorDepth(D) == 1 /\ isScalarDSL(DSL) /\ D' := stripPointerDeclByOne(D) .
+  
+ ceq k(allocPtr(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocEnum(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(ptr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ getPointerDeclaratorDepth(D) == 1 /\ isEnumDSL(DSL) /\ D' := stripPointerDeclByOne(D) .
+
+ ceq k(allocPtr(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocFun(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(ptr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ getPointerDeclaratorDepth(D) == 1 /\ isFunDSL(DSL) /\ D' := stripPointerDeclByOne(D) .    
+endfm
+
+***
+*** Dynamically build arrays. Here, arrays, of any dimensions, are made up of identical symbolic values (the array just
+*** points to a single location to hold the value, regardless of the dimension of the array).
+***
+fmod EXP-SEMANTICS-ALLOC-ARRAY is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including EXP-SEMANTICS-ALLOCATION .
+  including HELPERS .
+  including TYPED-ENVIRONMENT .
+  
+  vars X X' : Identifier . var K : Computation . 
+  vars L L' : Location . var DSL : DeclarationSpecifierList .
+  vars D D' : Declarator . var Env : Env . var SFS : SFieldSet .
+  var N : Nat .
+  
+  ***
+  *** If we have a multi-dimensional array, we will allocate one array level for
+  *** each dimension. A two dimensional-array, for instance, would have the first
+  *** level represented as arr(L), location L would then hold arr(L'), and L' would
+  *** hold the representation of the value stored in the array. This will allow
+  *** proper behavior when pointers are used, and will allow proper offsetting,
+  *** so a[3][4] will go down two levels to get the value stored there. Since these
+  *** are symbolic arrays, all a[n][m] have the same value.
+  ***
+ ceq k(allocArray(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocArray(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(arr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isArrayDeclarator(D) /\ getArrayDeclaratorDepth(D) > 1 /\ D' := stripArrayDeclByOne(D) .
+     
+  ***
+  *** For the one-dimensional case, we actually need to allocate whatever it is that
+  *** we are storing. These cases handle pointers, structures, unions, scalars, and enums, respectively.
+  *** Enums are kept separate since this could be useful in some cases; functions are not handled here, since
+  *** it is not possible to have an array of functions (arrays of function pointers would be handled during
+  *** pointer allocation).
+  ***     
+ ceq k(allocArray(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocPtr(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(arr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isArrayDeclarator(D) /\ getArrayDeclaratorDepth(D) == 1 /\ D' := stripArrayDeclByOne(D) /\ isPointerDeclarator(D') .
+
+ ceq k(allocArray(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocStruct(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(arr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isArrayDeclarator(D) /\ getArrayDeclaratorDepth(D) == 1 /\ 
+     D' := stripArrayDeclByOne(D) /\ isPointerDeclarator(D') == false /\ 
+     isStructDSL(DSL) .
+
+ ceq k(allocArray(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocUnion(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(arr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isArrayDeclarator(D) /\ getArrayDeclaratorDepth(D) == 1 /\ 
+     D' := stripArrayDeclByOne(D) /\ isPointerDeclarator(D') == false /\ 
+     isUnionDSL(DSL) .
+
+ ceq k(allocArray(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocScalar(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(arr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isArrayDeclarator(D) /\ getArrayDeclaratorDepth(D) == 1 /\ 
+     D' := stripArrayDeclByOne(D) /\ isPointerDeclarator(D') == false /\ 
+     isScalarDSL(DSL) .
+     
+ ceq k(allocArray(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(allocEnum(DSL,D') -> storeValIn(loc(N)) -> falloc(DSL,D,loc(N)) -> val(arr(loc(N))) -> K) 
+       env(Env [@unnamed,loc(N),noval,dsl(DSL) dcl(D')]) nextLoc(s(N))
+  if isArrayDeclarator(D) /\ getArrayDeclaratorDepth(D) == 1 /\ 
+     D' := stripArrayDeclByOne(D) /\ isPointerDeclarator(D') == false /\ 
+     isEnumDSL(DSL) .     
+endfm
+
+***
+*** Structures are allocated as a map from field names to locations. Note that, if a structure
+*** contains a pointer field, this field will not be allocated yet if it points to another
+*** structure or union, since this could easily cycle. Instead, we leave an allocation trigger
+*** behind that will allocate additional space when the pointer is followed.
+***
+fmod EXP-SEMANTICS-ALLOC-STRUCT is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including EXP-SEMANTICS-ALLOCATION .
+  including HELPERS .
+  including TYPED-ENVIRONMENT .
+  
+  vars X X' : Identifier . var K : Computation . 
+  vars L L' : Location . var DSL : DeclarationSpecifierList .
+  vars D D' : Declarator . var Env : Env . var SFS : SFieldSet .
+  var SM : StructMapSet . var SQL : DeclarationSpecifierList .
+  var SUS : StructOrUnion .  var N : Nat . var SF : StructMapFieldSet . 
+  
+  ***
+  *** If we need to allocate a structure, figure out which fields the
+  *** structure has and then allocate each individually.
+  ***
+  eq k(allocStruct(DSL,D) -> K) structMap(SM) =
+     k(allocStructFields(getStructDSLName(DSL),structFields(DSL,SM)) -> K) structMap(SM) .
+     
+  op structFields : DeclarationSpecifierList StructMapSet -> SFieldSet .
+  eq structFields(DSL,SM) = buildStructFromMap(getStructDSLName(DSL),SM) .
+  
+  op buildStructFromMap : Identifier StructMapSet -> SFieldSet .
+  eq buildStructFromMap(X, (SM [X, SUS @ SF])) = buildStructFields(SF) .
+  
+  op buildStructFields : StructMapFieldSet -> SFieldSet .
+  eq buildStructFields([X, D | SQL] SF) = sbuildfield(X, D, SQL) buildStructFields(SF) .
+  eq buildStructFields(empty) = nil .
+  
+  ***
+  *** Allocate each field, based on the field type. The first equation handles pointers that
+  *** do not (eventually) point to structures or unions. The second handles pointers that
+  *** do -- in this case, no allocation will happen until we try to read through the pointer.
+  *** The third handles arrays in structures, the fourth nested structures, the fifth nested
+  *** unions, the sixth scalar values, the seventh enums. The final case, when all allocations 
+  *** are complete, returns the final structure map, which can be assigned to something.
+  ***
+  op sbuildfield : Identifier Declarator DeclarationSpecifierList -> SField .
+  op allocStructFields : Identifier SFieldSet -> ComputationItem .
+  
+ ceq k(allocStructFields(X',sbuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocPtr(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocStructFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval, dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ isStructDSL(SQL) == false /\ isUnionDSL(SQL) == false .
+  
+ ceq k(allocStructFields(X',sbuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(val(ptr(triggerAlloc)) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocStructFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ (isStructDSL(SQL) or isUnionDSL(SQL)) .
+  
+ ceq k(allocStructFields(X',sbuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocArray(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocStructFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isArrayDeclarator(D) .
+  
+ ceq k(allocStructFields(X',sbuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocStruct(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocStructFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isStructDSL(SQL) .
+
+ ceq k(allocStructFields(X',sbuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocUnion(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocStructFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isUnionDSL(SQL) .
+
+ ceq k(allocStructFields(X',sbuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocScalar(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocStructFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isScalarDSL(SQL) .
+
+ ceq k(allocStructFields(X',sbuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocEnum(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocStructFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isEnumDSL(SQL) .
+       
+  eq k(allocStructFields(X',SFS) -> K) env(Env) nextLoc(N) =
+     k(val(struct(X',SFS)) ->       K) env(Env) nextLoc(N) [owise] .
+endfm
+
+***
+*** Unions are allocated as a map from field names to locations. Note that, if a union
+*** contains a pointer field, this field will not be allocated yet if it points to another
+*** structure or union, since this could easily cycle. Instead, we leave an allocation trigger
+*** behind that will allocate additional space when the pointer is followed. Unions are currently
+*** represented as being identical to structures, so:
+***
+*** TODO: Look at modifying the definition of union to treat as an actual (non-typesafe) union type
+***
+fmod EXP-SEMANTICS-ALLOC-UNION is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including EXP-SEMANTICS-ALLOCATION .
+  including HELPERS .
+  including TYPED-ENVIRONMENT .
+  
+  vars X X' : Identifier . var K : Computation . 
+  vars L L' : Location . var DSL : DeclarationSpecifierList .
+  vars D D' : Declarator . var Env : Env . var SFS : SFieldSet .
+  var SM : StructMapSet . var SQL : DeclarationSpecifierList .
+  var SUS : StructOrUnion .  var N : Nat . var SF : StructMapFieldSet . 
+  
+  ***
+  *** If we need to allocate a structure, figure out which fields the
+  *** structure has and then allocate each individually.
+  ***
+  eq k(allocUnion(DSL,D) -> K) structMap(SM) =
+     k(allocUnionFields(getUnionDSLName(DSL),unionFields(DSL,SM)) -> K) structMap(SM) .
+     
+  op unionFields : DeclarationSpecifierList StructMapSet -> SFieldSet .
+  eq unionFields(DSL,SM) = buildUnionFromMap(getUnionDSLName(DSL),SM) .
+  
+  op buildUnionFromMap : Identifier StructMapSet -> SFieldSet .
+  eq buildUnionFromMap(X, (SM [X, SUS @ SF])) = buildUnionFields(SF) .
+  
+  op buildUnionFields : StructMapFieldSet -> SFieldSet .
+  eq buildUnionFields([X, D | SQL] SF) = ubuildfield(X, D, SQL) buildUnionFields(SF) .
+  
+  ***
+  *** Allocate each field, based on the field type. The first equation handles pointers that
+  *** do not (eventually) point to structures or unions. The second handles pointers that
+  *** do -- in this case, no allocation will happen until we try to read through the pointer.
+  *** The third handles arrays in structures, the fourth nested structures, the fifth nested
+  *** unions, the sixth scalar values, the seventh enums. The final case, when all allocations 
+  *** are complete, returns the final structure map, which can be assigned to something.
+  ***
+  op ubuildfield : Identifier Declarator DeclarationSpecifierList -> SField .
+  op allocUnionFields : Identifier SFieldSet -> ComputationItem .
+  
+ ceq k(allocUnionFields(X',ubuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocPtr(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocUnionFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ isStructDSL(SQL) == false /\ isUnionDSL(SQL) == false .
+  
+ ceq k(allocUnionFields(X',ubuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(val(ptr(triggerAlloc)) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocUnionFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) /\ (isStructDSL(SQL) or isUnionDSL(SQL)) .
+  
+ ceq k(allocUnionFields(X',ubuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocArray(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocUnionFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isArrayDeclarator(D) .
+  
+ ceq k(allocUnionFields(X',ubuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocStruct(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocUnionFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isStructDSL(SQL) .
+
+ ceq k(allocUnionFields(X',ubuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocUnion(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocUnionFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isUnionDSL(SQL) .
+
+ ceq k(allocUnionFields(X',ubuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocScalar(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocUnionFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isScalarDSL(SQL) .
+
+ ceq k(allocUnionFields(X',ubuildfield(X,D,SQL) SFS) -> K) env(Env) nextLoc(N) =
+     k(allocEnum(SQL,D) -> storeValIn(loc(N)) -> falloc(SQL,D,loc(N)) -> allocUnionFields(X',sfield(X,loc(N)) SFS) -> K) 
+     env(Env [@unnamed,loc(N),noval,dsl(SQL) dcl(D)]) nextLoc(s(N))
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isEnumDSL(SQL) .
+       
+  eq k(allocUnionFields(X',SFS) -> K) env(Env) nextLoc(N) =
+     k(val(union(X',SFS)) ->       K) env(Env) nextLoc(N) [owise] .
+endfm
+
+***
+*** Dynamically build scalars. The hook is needed, since a scalar could be a unit, a non-null
+*** value, information flow information, etc. 
+***
+*** POLICY HOOK: Computation Item defaultVal should result in a default value in the policy
+*** being used.
+***
+fmod EXP-SEMANTICS-ALLOC-SCALAR is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including EXP-SEMANTICS-ALLOCATION .
+  including HELPERS .
+  including TYPED-ENVIRONMENT .
+  
+  var K : Computation . var Env : Env . var N : Nat .
+  var DSL : DeclarationSpecifierList . var D : Declarator . 
+  
+  ***
+  *** To allocate a scalar, create a new location and assign a default value to it.
+  ***
+  eq k(allocScalar(DSL,D) -> K) env(Env) nextLoc(N) =
+     k(defaultVal(DSL,D) ->  K) env(Env) nextLoc(N) .
+     
+  ***
+  *** HOOK
+  ***
+  op defaultVal : DeclarationSpecifierList Declarator -> ComputationItem .
+endfm
+
+***
+*** Dynamically build enums. The hook is needed here for the same reason it is needed in
+*** EXP-SEMANTICS-ALLOC-SCALAR above.
+***
+*** POLICY HOOK: Computation Item defaultEnumVal should result in a default value in the policy
+*** being used.
+***
+fmod EXP-SEMANTICS-ALLOC-ENUM is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including EXP-SEMANTICS-ALLOCATION .
+  including HELPERS .
+  including TYPED-ENVIRONMENT .
+  
+  var K : Computation . var Env : Env . var N : Nat .
+  var DSL : DeclarationSpecifierList . var D : Declarator . 
+  
+  ***
+  *** To allocate a scalar, create a new location and assign a default value to it.
+  ***
+  eq k(allocEnum(DSL,D) ->        K) env(Env) nextLoc(N) =
+     k(defaultEnumVal(DSL,D) ->   K) env(Env) nextLoc(N) .
+     
+  ***
+  *** HOOK
+  ***
+  op defaultEnumVal : DeclarationSpecifierList Declarator -> ComputationItem .
+endfm
+
+***
+*** Dynamically build "functions", really just a "thunk" representing the fact that a
+*** function is what is being pointed to. More information can be tracked about the
+*** specific function being pointed to at the policy level, if this is needed. 
+***
+*** POLICY HOOK: Computation Item defaultFunVal should result in a default value in the policy
+*** being used.
+***
+fmod EXP-SEMANTICS-ALLOC-FUN is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including EXP-SEMANTICS-ALLOCATION .
+  including HELPERS .
+  including TYPED-ENVIRONMENT .
+  
+  var K : Computation . var Env : Env . var N : Nat .
+  var DSL : DeclarationSpecifierList . var D : Declarator . 
+  
+  ***
+  *** To allocate a scalar, create a new location and assign a default value to it.
+  ***
+  eq k(allocFun(DSL,D) ->      K) env(Env) nextLoc(N) =
+     k(defaultFunVal(DSL,D) -> K) env(Env) nextLoc(N) .
+     
+  ***
+  *** HOOK
+  ***
+  op defaultFunVal : DeclarationSpecifierList Declarator -> ComputationItem .
+endfm
+
+***
+*** Semantics of assignment. We use an assignment "pipeline" here that gives
+*** policies a chance to preempt the assignment. This is done because the
+*** code for assignment was getting unwieldy -- this allows us to easily
+*** factor out different cases (locks, annotations/final values, etc).
+***
+fmod EXP-SEMANTICS-ASSIGN-BASE is
+  including EXP-SYMBOLIC-SEMANTICS-SPLIT .
+  including HELPERS .
+  
+  var AFL : AssignFlagList . vars K K' : Computation . var Env : Env .
+  vars V V' : Value . var X : Identifier . var L : Location .
+  var EI : EnvItem .
+  
+  ***
+  *** This provides a pipeline of steps that can be taken during assignment.
+  *** A number of flags are checked to see if certain conditions should/should
+  *** not be allowed.
+  ***
+  op assignPipeline : Value Location AssignFlagList Computation -> ComputationItem .
+
+  ***
+  *** A flag representing an error -- we want to let all steps generate
+  *** potential messages, but don't actually do the assignment if we have
+  *** an error.
+  ***
+  op assignError : -> AssignFlag .
+    
+  ***
+  *** On assignment, put the value into the pipeline
+  ***
+  eq k(val(V) -> assign(L,AFL) -> K) = k(assignPipeline(V,L,AFL,nil) -> K) .
+  
+  ***
+  *** Once all the assign flags have been checked, do the assignment
+  *** if we have no flags. If we have just the assignError flag, don't
+  *** do the assignment.
+  ***
+  eq k(assignPipeline(V,L,emptyAF,K') -> K) env(Env [X,L,V',EI]) =
+     k(K'                             -> K) env(Env [X,L,V ,EI]) .
+     
+  eq k(assignPipeline(V,L,assignError,K') -> K) env(Env) =
+     k(                                      K) env(Env) .
+endfm
+
+***
+*** Assignment rules for when we have locks. Note that pointer-specific rules
+*** where scalars are assigned to the pointer are part of policies instead, since
+*** different policies may want to handle this in different ways, or at least have
+*** different ways of identifing scalar values.
+***
+fmod EXP-SEMANTICS-ASSIGN-LOCK is
+  including EXP-SEMANTICS-ASSIGN-BASE .
+  including TYPED-ENVIRONMENT .
+  including LOCK-HELPERS .
+  
+  var AFL : AssignFlagList . vars K K' : Computation . var Env : Env .
+  var X : Identifier . var L : Location . var EI : EnvItem . var D : Declarator .
+  vars V V' : Value .
+    
+  op overrideLock : -> AssignFlag .
+  op failOnLock : -> AssignFlag .
+  op warnOnLock : -> AssignFlag .
+  op issueLockWarning : Env -> ComputationItem .
+  op issueLockError : Env -> ComputationItem .
+  
+  ***
+  *** Warning/Error messages
+  ***
+  eq k(issueLockWarning(Env) -> K) = k(issueWarning(2,"WARNING: Locked value changed.",Env) -> K) .
+  eq k(issueLockError(Env) -> K) = k(issueWarning(1,"ERROR: Attempted to change locked value.",Env) -> K) .
+    
+  ***
+  *** Rule 1: We are allowed to override a lock, but the value isn't actually locked.
+  ***
+ ceq k(assignPipeline(V,L, overrideLock AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)]) =
+     k(assignPipeline(V,L,              AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+
+  ***
+  *** Rule 2: We are allowed to override a lock, and the value is locked. If the assignment
+  *** goes through, lock the values past this location.
+  ***
+ ceq k(assignPipeline(V,L, overrideLock AFL,                    K') -> K) env(Env [X,L,V',EI dcl(D) vlock(true)]) =
+     k(assignPipeline(V,L,              AFL, lockValsPast(L) -> K') -> K) env(Env [X,L,V',EI dcl(D) vlock(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+
+  ***
+  *** Rule 3: We will fail on lock, but the value isn't actually locked.
+  ***
+ ceq k(assignPipeline(V,L, failOnLock AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)]) =
+     k(assignPipeline(V,L,            AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+  
+  ***
+  *** Rule 4a: We will fail on lock, and the value is locked. But, the values are the same, so don't issue an error message.
+  ***
+ ceq k(assignPipeline(V,L, failOnLock  AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(true)]) =
+     k(assignPipeline(V,L,             AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ V == V' .
+  
+  ***
+  *** Rule 4b: We will fail on lock, and the value is locked. Also, V and V' are different. Put the error message into the computation.
+  ***
+ ceq k(assignPipeline(V,L, failOnLock  AFL,K')                                                       -> K) env(Env [X,L,V',EI dcl(D) vlock(true)]) =
+     k(assignPipeline(V,L, assignError    ,K') -> issueLockError(Env [X,L,V',EI dcl(D) vlock(true)]) -> K) env(Env [X,L,V',EI dcl(D) vlock(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ V =/= V' .
+
+  ***
+  *** Rule 5: We will warn on lock, but the value isn't actually locked.
+  ***
+ ceq k(assignPipeline(V,L, warnOnLock AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)]) =
+     k(assignPipeline(V,L,            AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+  
+  ***
+  *** Rule 6a: We will warn on lock, and the value is locked. But, since both values are identical, don't
+  *** issue a warning.
+  ***
+ ceq k(assignPipeline(V,L, warnOnLock AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)]) =
+     k(assignPipeline(V,L,            AFL,K') -> K) env(Env [X,L,V',EI dcl(D) vlock(false)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ V == V' .
+  
+  ***
+  *** Rule 6b: We will warn on lock, and the value is locked. Put the warning message into the computation, and lock the values past
+  *** this location.
+ ceq k(assignPipeline(V,L, warnOnLock AFL,                    K')                                                         -> K) env(Env [X,L,V',EI dcl(D) vlock(true)]) =
+     k(assignPipeline(V,L,            AFL, lockValsPast(L) -> K') -> issueLockWarning(Env [X,L,V',EI dcl(D) vlock(true)]) -> K) env(Env [X,L,V',EI dcl(D) vlock(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ V =/= V' .
+endfm
+
+***
+*** Assignment rules for when we have final values. Note that pointer-specific rules
+*** where scalars are assigned to the pointer are part of policies instead, since
+*** different policies may want to handle this in different ways, or at least have
+*** different ways of identifing scalar values. 
+***
+fmod EXP-SEMANTICS-ASSIGN-FINAL is
+  including EXP-SEMANTICS-ASSIGN-BASE .
+  including TYPED-ENVIRONMENT .
+  including FINAL-HELPERS .
+  
+  var AFL : AssignFlagList . vars K K' : Computation . var Env : Env .
+  var X : Identifier . var L : Location . var EI : EnvItem . var D : Declarator .
+  vars V V' V'' : Value . var S : String .
+  
+  op overrideFinal : -> AssignFlag .
+  op failOnFinal : -> AssignFlag .
+  op warnOnFinal : -> AssignFlag .
+  op issueFinalWarning : String Env -> ComputationItem .
+  op issueFinalError : String Env -> ComputationItem .
+
+  ***
+  *** Warning/Error messages
+  ***
+  eq k(issueFinalWarning(S,Env) -> K) = k(issueWarning(2,("WARNING: " + S),Env) -> K) .
+  eq k(issueFinalError(S,Env) -> K) = k(issueWarning(1,("ERROR: " + S),Env) -> K) .
+    
+  ***
+  *** Rule 1: We are allowed to override a final value, but the value isn't actually final.
+  ***
+ ceq k(assignPipeline(V,L, overrideFinal AFL,K') -> K) env(Env [X,L,V',EI dcl(D) final(false)]) =
+     k(assignPipeline(V,L,               AFL,K') -> K) env(Env [X,L,V',EI dcl(D) final(false)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+  
+  ***
+  *** Rule 2: We are allowed to override a final value, and the value is final. Since we can
+  *** override, don't bother checking compatibility, but do finalize all values past L. 
+  ***
+ ceq k(assignPipeline(V,L, overrideFinal AFL,                       K') -> K) env(Env [X,L,V',EI dcl(D) final(true)]) =
+     k(assignPipeline(V,L,               AFL,finalizeValsPast(L) -> K') -> K) env(Env [X,L,V',EI dcl(D) final(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+
+  ***
+  *** Rule 3: We will fail on final, but the value isn't actually final.
+  ***
+ ceq k(assignPipeline(V,L, failOnFinal AFL,K') -> K) env(Env [X,L,V',EI dcl(D) final(false)]) =
+     k(assignPipeline(V,L,             AFL,K') -> K) env(Env [X,L,V',EI dcl(D) final(false)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+  
+  ***
+  *** Rule 4a: We will fail on final, and the value is final. Check compatibility. If the value
+  *** is not compatible, put the error message into the computation.
+ ceq k(assignPipeline(V,L, failOnFinal AFL,K')                                                        -> K) env(Env [X,L,V',EI dcl(D) final(true)]) =
+     k(assignPipeline(V,L, assignError    ,K') -> issueFinalError(genFinalErrorMsg(V,L,(Env [X,L,V',EI dcl(D) final(true)])),Env [X,L,V',EI dcl(D) final(true)]) -> K) 
+     env(Env [X,L,V',EI dcl(D) final(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ assignAllowed(V,L,(Env [X,L,V',EI dcl(D) final(true)])) == false .
+
+  ***
+  *** Rule 4b: We will fail on final, and the value is final. Check compatibility. If the value
+  *** is compatible, change V to the compatible value, V''.
+ ceq k(assignPipeline(V,  L, failOnFinal AFL,                       K') -> K) env(Env [X,L,V',EI dcl(D) final(true)]) =
+     k(assignPipeline(V'',L,             AFL,finalizeValsPast(L) -> K') -> K) env(Env [X,L,V',EI dcl(D) final(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ assignAllowed(V,L,(Env [X,L,V',EI dcl(D) final(true)])) /\ V'' := assignValue(V,L,(Env [X,L,V',EI dcl(D) final(true)])) .
+  
+  ***
+  *** Rule 5: We will warn on final, but the value isn't actually final.
+  ***
+ ceq k(assignPipeline(V,L, warnOnFinal AFL,K') -> K) env(Env [X,L,V',EI dcl(D) final(false)]) =
+     k(assignPipeline(V,L,             AFL,K') -> K) env(Env [X,L,V',EI dcl(D) final(false)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) .
+  
+  ***
+  *** Rule 6a: We will warn on final, and the value is final. Check compatibility. If the value
+  *** is not compatible, put the warning message into the computation.
+ ceq k(assignPipeline(V,L, warnOnFinal AFL,K')                                                          -> K) env(Env [X,L,V',EI dcl(D) final(true)]) =
+     k(assignPipeline(V,L,             AFL,K') -> issueFinalWarning(genFinalErrorMsg(V,L,(Env [X,L,V',EI dcl(D) final(true)])),Env [X,L,V',EI dcl(D) final(true)]) -> K) 
+     env(Env [X,L,V',EI dcl(D) final(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ assignAllowed(V,L,(Env [X,L,V',EI dcl(D) final(true)])) == false .
+
+  ***
+  *** Rule 6b: We will warn on final, and the value is final. Check compatibility. If the value
+  *** is compatible, change V to the compatible value, V''.
+ ceq k(assignPipeline(V,  L, warnOnFinal AFL,                       K') -> K) env(Env [X,L,V',EI dcl(D) final(true)]) =
+     k(assignPipeline(V'',L,             AFL,finalizeValsPast(L) -> K') -> K) env(Env [X,L,V',EI dcl(D) final(true)])
+  if ( (isPointerDeclarator(D) == false) or (isPointerDeclarator(D) and isPointerVal(V)) ) /\ assignAllowed(V,L,(Env [X,L,V',EI dcl(D) final(true)])) /\ V'' := assignValue(V,L,(Env [X,L,V',EI dcl(D) final(true)])) .
+endfm
+
+***
+*** Assignment rules for when we are assigning the unknown value.
+***
+fmod EXP-SEMANTICS-ASSIGN-UNKNOWN is
+  including EXP-SEMANTICS-ASSIGN-BASE .
+  including TYPED-ENVIRONMENT .
+  including FINAL-HELPERS .
+  including EXP-SEMANTICS-LOOKUP .
+  including EXP-SEMANTICS-ALLOCATION .
+  
+  var AFL : AssignFlagList . vars K K' : Computation . var Env : Env .
+  var X : Identifier . var L : Location . var EI : EnvItem . var D : Declarator .
+  vars V V' V'' : Value . var DSL : DeclarationSpecifierList .
+  
+  op checkForUnknown : -> AssignFlag .
+  op allocUnknown : Location -> ComputationItem .
+
+  ***
+  *** Rule 1: If the unknown value is being assigned, and we are checking for it,
+  *** ensure we do some post-processing after
+  ***
+  eq k(assignPipeline(unkv,L, checkForUnknown AFL,                    K') -> K) =
+     k(assignPipeline(unkv,L,                 AFL, allocUnknown(L) -> K') -> K) .
+     
+  ***
+  *** Rule 2: If we are looking for the unknown value, but don't find it, just
+  *** keep going through the pipeline
+  ***
+ ceq k(assignPipeline(V,L,checkForUnknown AFL, K') -> K) =
+     k(assignPipeline(V,L,                AFL, K') -> K)
+  if V =/= unkv .
+  
+  ***
+  *** Allocation rules for the unknown value. This assumes that we are
+  *** allowed to allocate (i.e., we haven't tripped an error that has
+  *** blocked it).
+  ***
+  
+  ***
+  *** Allocation rule 1: Pointers
+  ***
+ ceq k(allocUnknown(L) -> K)                  env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+     k(allocPtr(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI])
+  if isPointerDeclarator(D) .
+
+  ***
+  *** Allocation rule 2: Arrays
+  ***
+ ceq k(allocUnknown(L) -> K)                    env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+     k(allocArray(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI])
+  if isArrayDeclarator(D) .
+    
+  ***
+  *** Allocation rule 3: Structures
+  ***
+ ceq k(allocUnknown(L)                     -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+     k(allocStruct(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI])
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isStructDSL(DSL) .
+  
+  ***
+  *** Allocation rule 4: Unions
+  ***
+ ceq k(allocUnknown(L)                     -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+     k(allocStruct(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI])
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isUnionDSL(DSL) .
+
+  ***
+  *** Allocation rule 5: Scalars
+  ***
+ ceq k(allocUnknown(L)                     -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+     k(allocScalar(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI])
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isScalarDSL(DSL) .
+
+  ***
+  *** Allocation rule 6: Enums
+  ***
+ ceq k(allocUnknown(L)                   -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+     k(allocEnum(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI])
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isEnumDSL(DSL) .
+
+  ***
+  *** Allocation rule 7: Functions (for pointers)
+  ***
+ ceq k(allocUnknown(L)                  -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI]) =
+     k(allocFun(DSL,D) -> storeValIn(L) -> K) env(Env [X,L,V,dsl(DSL) dcl(D) EI])
+  if isPointerDeclarator(D) == false /\ isArrayDeclarator(D) == false /\ isFunDSL(DSL) .
+        
+endfm
+        
+*** Generic statement semantics. These semantics are
+*** aimed at symbolic evaluation with sets of environments.
+*** Since policies can add their own information to the
+*** state, merging after each step is policy specific.
+***
+fmod STMT-SEMANTICS is
+  including STATE .
+  including STMT-SYNTAX .
+  including EXP-SEMANTICS-GENERIC .
+  including DIRECTIVES-SYNTAX .
+  including HELPERS .
+      
+  op stmt : StmtList -> ComputationItem .
+  op stmt! : StmtList Env -> ComputationItem .
+  op es : EnvSet -> ComputationItem .
+  op reform : EnvSet -> ComputationItem .
+  op lk : Env Qid -> Env .
+  op lk : Env Qid Qid -> Env .
+  op envLocked : Env -> Bool . 
+  op envUnlock : Qid EnvSet -> EnvSet .
+  op envUnlock : Qid Qid EnvSet -> EnvSet .
+  op unlockEnvsOn : Qid -> ComputationItem .
+  
+  op initS : -> ComputationItem .
+  op mergeS : -> ComputationItem .
+   
+  ***
+  *** We need to process a statement in all environments. To do this,
+  *** keep track of the statement to be processed and a portion of the
+  *** state. The portion kept around is specified by the policy, since
+  *** different policies may need different information . We also keep
+  *** two environment sets, one of the environments yet to be used
+  *** and the other of environments in which the statement has already
+  *** been evaluated.
+  ***  
+  op _|_||_||_ : Stmt State EnvSet EnvSet -> ComputationItem .
+  
+  var E : Exp . var K : Computation . vars Q Q' : Qid .
+  vars Env Env' : Env . vars ES ES' ES'' : EnvSet . var S : Stmt .
+  var ST : State . var L : Location . vars V V' : Value .
+  var Vl : ValueList . vars N N' : Nat . var B : Bool .
+  var EI : EnvItem .
+
+  ***
+  *** Determine if a given environment is locked or unlocked
+  ***
+  eq envLocked(lk(Env,Q)) = true .
+  eq envLocked(lk(Env,Q,Q')) = true .
+  eq envLocked(Env) = false [owise] .
+
+  ***  
+  *** Unlock all environments locked on a given qid or qid pair
+  ***
+  eq envUnlock( Q, ( lk(Env,Q) | ES ) ) = envUnlock( Q, ( Env | ES) ) .
+  eq envUnlock( Q, Q', ( lk(Env,Q,Q') | ES ) ) = envUnlock( Q, Q', ( Env | ES) ) .
+  eq envUnlock( Q, ES ) = ES [owise] .
+ 
+  ***
+  *** Unlock all environments in the env set locked with a given qid
+  ***
+  eq k(unlockEnvsOn(Q) -> K) envs(ES) = k(K) envs(envUnlock(Q,ES)) .
+  
+  ***
+  *** Unlock all locked environments
+  ***
+  op unlockAllEnvs : -> ComputationItem .
+  op unlockAll : EnvSet -> EnvSet .
+  eq unlockAll( lk(Env,Q) | ES ) = unlockAll( Env | ES ) .
+  eq unlockAll( ES ) = ES [owise] .
+  eq k(unlockAllEnvs -> K) envs(ES) = k(K) envs(unlockAll(ES)) .
+
+  ***
+  *** Unlock all envs locked on a given qid, triggered from computation
+  ***
+  op unlockOn : Qid -> ComputationItem .
+  eq k(es(ES) -> unlockOn(Q) -> K) = k(es(envUnlock(Q,ES)) -> K) .
+  
+  ***
+  *** Remove all envs locked on a given qid
+  ***
+  op removeOn : Qid EnvSet -> EnvSet .
+  eq removeOn(Q, ( lk(Env,Q) | ES)) = removeOn(Q, ES) .
+  eq removeOn(Q, ( lk(Env,Q,Q') | ES)) = removeOn(Q, ES) .
+  eq removeOn(Q, ES) = ES [owise] .
+
+  ***
+  *** Remove all envs NOT locked on a given qid
+  ***
+  op removeNotOn : Qid EnvSet -> EnvSet .
+  eq removeNotOn(Q, ( lk(Env,Q) | ES)) = lk(Env,Q) | removeNotOn(Q, ES) .
+  eq removeNotOn(Q, ( lk(Env,Q,Q') | ES)) = lk(Env,Q,Q') | removeNotOn(Q, ES) .
+  eq removeNotOn(Q, ES) = emptyES [owise] .
+      
+  ***
+  *** Determine if any envs are locked on a specific Qid
+  ***
+  op anyLocked : Qid EnvSet -> Bool .
+  eq anyLocked(Q, ( lk(Env,Q) | ES) ) = true .
+  eq anyLocked(Q, ( lk(Env,Q,Q') | ES ) ) = true .
+  eq anyLocked(Q, ES) = false [owise] .
+     
+  ***
+  *** Save an env to restore later
+  ***
+  op recoverEnv : Env -> ComputationItem .
+  eq k(recoverEnv(Env) -> K) env(Env') = k(K) env(Env) .
+  eq k(val(Vl) -> recoverEnv(Env) -> K) env(Env') = k(val(Vl) -> K) env(Env) .
+  
+  ***
+  *** Push the current env into the env set
+  ***
+  op pushEnv : -> ComputationItem .
+  eq k(pushEnv -> K) env(Env) = k(K) envs(Env) .
+  
+  ***
+  *** Set maintenance operations. For any statement, we will
+  *** execute by executing it in each environment by turn. Note
+  *** that we assume that we could get an environment set back,
+  *** not just a new environment. This could be the case for
+  *** conditionals, for instance.
+  ***
+  op mergeEnvs : EnvSet -> ComputationItem .
+  eq k(mergeEnvs(ES) -> K) envs(ES') = k(es(ES | ES') -> K) .
+
+  op putEnvSetInK : -> ComputationItem .
+  op putEnvSetInK : EnvSet -> ComputationItem .
+  eq k(putEnvSetInK -> K) envs(ES) = k(es(ES) -> K) .
+  eq k(putEnvSetInK(ES) -> K) envs(ES') = k(es(ES | ES') -> K) .
+  
+  ***
+  *** Perform the initial setup to process a statement. The setup
+  *** logic, encoded in the handling of initS, is policy-specific. 
+  ***
+ ceq k(stmt(S) -> K) envs(Env | ES) =
+     k(initS -> (S | noState || Env | ES || emptyES) -> K)
+  if isDirective(S) == false /\ isSpecial(S) == false .
+
+ ceq k(stmt(S) -> K) envs(emptyES) =
+     k(initS -> (S | noState || emptyES || emptyES) -> K)
+  if isDirective(S) == false /\ isSpecial(S) == false .
+
+  ***
+  *** When a statement returns, store the environment set back in
+  *** the list of processed environment sets and perform any state
+  *** merging that needs to occur. The state merging, triggered
+  *** by the mergeS computation item, is policy-specific.
+  ***     
+  eq k(es(ES) -> (S | ST || ES' || ES'') -> K) =
+     k(mergeS -> (S | ST || ES' || ES'' | ES) -> K) .
+
+  ***
+  *** Re-establish the env set, based on a given set of environments.
+  *** Note the assumption that there is no current envs state item;
+  *** this will be the case from the start of statement processing until
+  *** here.
+  ***
+  *** NOTE: we now use this logic to pare down the set of environments if
+  *** it grows too large. This ensures that the analysis can keep running,
+  *** hopefully finding more errors, but obviously loses precision since
+  *** errors detectable in the dropped environments cannot now be found. The
+  *** high water mark is hardcoded here for now, but should be made
+  *** a parameter to the analysis. Note that once this error is issued,
+  *** it is not issued again, since this could cause a flood of messages
+  *** that would obscure other messages.
+  ***
+  *** TODO: Soft-code the high water mark parameter.
+  ***
+ ceq k(reform(ES) -> K) truncated(B) = k(K) envs(ES) truncated(B)
+  if card(ES) <= 100 .
+  
+ ceq k(reform(ES) -> K) truncated(false) = 
+     k(issueWarning(1,"Warning: Dropping environments, could prevent detection of errors!") -> K) envs(drop(N',ES)) truncated(true)
+  if N := card(ES) /\ N > 100 /\ N' := (N - 100) .
+
+ ceq k(reform(ES) -> K) truncated(true) = k(K) envs(drop(N',ES)) truncated(true)
+  if N := card(ES) /\ N > 100 /\ N' := (N - 100) .
+       
+  ***
+  *** Various methods of capturing the current environment. Note that
+  *** sometimes we want to lock it as well -- this is done for cases
+  *** like return, where we should skip processing of the environment
+  *** until we reach the end of the function body.
+  ***     
+  op captureEnv : -> ComputationItem .
+  eq k(captureEnv -> K) env(Env) = k(es(Env) -> K) .
+  
+  op captureLockEnv : Qid -> ComputationItem .
+  eq k(captureLockEnv(Q) -> K) env(Env) = k(es(lk(Env,Q)) -> K) .
+  
+  op captureDupLockEnv : Qid -> ComputationItem .
+  eq k(captureDupLockEnv(Q) -> K) env(Env) = k(es(lk(Env,Q) | Env) -> K) .
+  
+  ***
+  *** Is the statement a directive? If so, we can skip much of the
+  *** processing. A directive, here, is defined as something which
+  *** cannot affect the environment.
+  ***
+  op isDirective : StmtList -> Bool .
+  eq isDirective(S) = false [owise] .  
+
+  ***
+  *** Is the statement special? If so, it may need different handling
+  *** for environment sets. We will need to take care of that with
+  *** the statement itself. This gives us a chance, in some cases,
+  *** to do some preprocessing as well.
+  ***      
+  op isSpecial : StmtList -> Bool .
+  eq isSpecial(S) = false [owise] .
+ 
+  ***
+  *** Reset temp vars back to entry values
+  ***
+  op restoreTemps : Env -> ComputationItem .
+ ceq k(es(ES | ( Env [nt(Q),L,V,EI])) -> restoreTemps(Env' [nt(Q),L,V',EI]) -> K) =
+     k(es(ES | ( Env [nt(Q),L,V',EI])) -> restoreTemps(Env' [nt(Q),L,V',EI]) -> K)
+  if V =/= V' .
+  eq k(es(ES) -> restoreTemps(Env) -> K) = k(es(ES) -> K) [owise] .
+endfm
+
+***
+*** Base semantics for simple statements -- those made up of just
+*** an expression, or skip statements.
+***
+fmod SIMPLE-STMT-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  var E : Exp . var Env : Env . var K : Computation .
+    
+  ***
+  *** Handle a simple statement -- an expression followed by
+  *** a semicolon.
+  ***             
+  eq k(stmt!((E ;), Env) -> K) = k(exp(E) -> discard -> captureEnv -> K) env(Env) .
+
+  ***
+  *** If we process a skip statement, just drop it. This does nothing in
+  *** any environment.
+  *** 
+  eq k(stmt(;) -> K) = k(K) . 
+  eq k(stmt(skip;) -> K) = k(K) .
+
+  ***
+  *** Properly tag these as special/directives
+  ***
+  eq isDirective(skip;) = true .
+  eq isDirective(;) = true .
+endfm
+
+***
+*** Base semantics for processing #CPFLine directives, which keep
+*** track of the current line number.
+***
+fmod LINE-DIRECTIVE-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  vars IL IL' : Nat . var K : Computation .
+  
+  ***
+  *** Handle a line directive -- these have no impact on any environment,
+  *** but do update the current line.
+  ***  
+  eq k(stmt(#CPFLine IL) -> K) currLn(IL') = k(K) currLn(IL) .  
+
+  ***
+  *** Properly tag this as a directive.
+  ***
+  eq isDirective(#CPFLine IL) = true .
+endfm
+
+***
+*** Base semantics for processing #CPFWarn directives, which provide
+*** a way to insert warnings coming in from parsing and other analysis.
+***
+fmod WARN-DIRECTIVE-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  var I : Int . var S : String . var K : Computation .  
+  
+  ***
+  *** Handle the warn directive -- these have no impact on any environment,
+  *** but add a warning message to the warning set.
+  ***
+  eq k(stmt(#CPFWarn(I,S)) -> K) = k(issueWarning(I,S) -> K) .
+endfm
+
+***
+*** Base semantics for processing #FCheckpoint directives. This will
+*** save the current environment as the "original environment", which
+*** can then be used in postconditions, which are written in terms
+*** of the original environment (except for the return value).
+***
+fmod CHECKPOINT-DIRECTIVE-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  vars Env Env' : Env . var K : Computation .
+  
+  ***
+  *** Handle a checkpoint -- it will save the current environment.
+  *** This means this should occur before any splits.
+  ***  
+  eq k(stmt(#CPFCheckpoint) -> K) envs(Env) origenv(Env')  = k(K) envs(Env) origenv(Env) .
+  
+  ***
+  *** Special case -- if we have an empty envset, the environment to
+  *** save is the empty environment.
+  ***
+  eq k(stmt(#CPFCheckpoint) -> K) envs(emptyES) origenv(Env) = k(K) envs(emptyES) origenv(noEnv) .
+
+  ***
+  *** Properly tag this as a directive.
+  ***
+  eq isDirective(#CPFCheckpoint) = true .
+endfm
+   
+***
+*** Base semantics for processing sequences of statements.
+***
+*** In general, for a statement sequence we just split off 
+*** the first statement. One exception is with invariants:
+*** if we have an invariant before a loop, we also want
+*** to check that it holds at the end of each normal loop
+*** iteration. To do this, we "attach" it to the loop,
+*** allowing the loop semantics to do the rest.
+***        
+fmod SEQUENCE-SEMANTICS is 
+  including STMT-SEMANTICS .
+  
+  var K : Computation . vars I I' : Int .
+  vars S S' S'' : Stmt . var Sl : StmtList . 
+  var E : Exp . var PE : PolicyExp .
+  
+  ***
+  *** If we have an invariant, store it with the while loop.
+  *** 
+  *** TODO: Will need to change to support multiple invariants.
+  ***
+ ceq k(stmt(S S' Sl) -> K) = k(stmt(S) -> stmt(S'' Sl) -> K)
+  if isInvariant(S) /\  isWhile(S') /\ S'' := addPEToWhile(S',getInvariantPE(S))  .
+   
+  ***
+  *** If we have an invariant, but the loop isn't next, just
+  *** advance it forward -- CIL may have put some statements
+  *** in between the invariant and the loop (we may want to
+  *** add an analysis pass that fixes this)
+  *** 
+  *** TODO: Will need to change to support multiple invariants.
+  ***
+ ceq k(stmt(S S' Sl) -> K) = k(stmt(S') -> stmt(S Sl) -> K)
+  if isInvariant(S) /\  isWhile(S') == false .
+     
+  ***
+  *** S is NOT an invariant
+  ***
+ ceq k(stmt(S Sl) -> K) = k(stmt(S) -> stmt(Sl) -> K) 
+  if isInvariant(S) == false /\ Sl =/= empty .
+ 
+  ***
+  *** No more statements in list
+  ***
+  eq k(stmt(empty) -> K) = k(K) .
+  
+ ceq isSpecial(S Sl) = true if Sl =/= empty .
+ ceq isSpecial(Sl) = true if Sl == empty .   
+ 
+  ***
+  *** Helper: determine if a statement is an invariant
+  ***
+  op isInvariant : Stmt -> Bool .
+  eq isInvariant(#invariant PE ;) = true .
+  eq isInvariant(S) = false [owise] .
+  
+  ***
+  *** Helper: determine if a statement is a while loop
+  ***
+  op isWhile : Stmt -> Bool .
+  eq isWhile(while ( E ) S) = true .
+  eq isWhile(S) = false [owise] .
+  
+  ***
+  *** Helper: get the policy expression out of an invariant
+  ***
+  op getInvariantPE : Stmt -> PolicyExp .
+  eq getInvariantPE(#invariant PE ;) = PE .
+  
+  ***
+  *** Helper: Create a new while statement including an invariant
+  ***
+  op addPEToWhile : Stmt PolicyExp -> Stmt .
+  eq addPEToWhile( (while ( E ) S), PE) = while[E,S,PE] .
+  
+  ***
+  *** Constructor: while loops with added invariants
+  ***
+  op while[_,_,_] : Exp Stmt PolicyExp -> Stmt .
+endfm
+
+***
+*** Base semantics for blocks.
+***
+*** Normally in C we would need to account for scoping in blocks. However, CIL removes
+*** declarations from blocks, moving them to the top of the function, and ensures they have
+*** unique names, so we can actually just treat a block as a statement list without special
+*** environment handling/merging.
+***  
+fmod BLOCK-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  var Sl : StmtList . var Env : Env . var K : Computation .
+
+  eq isDirective({ Sl }) = true .
+  eq isDirective({}) = true .
+  
+  eq k(stmt({ Sl }) -> K) = k(stmt(Sl) -> K) .
+  eq k(stmt({}) -> K) = k(K) .
+  
+  op stripBlock : Stmt -> StmtList .
+  eq stripBlock({ Sl }) = stripBlock(Sl) .
+  eq stripBlock(Sl) = Sl [owise] .
+endfm
+
+***
+*** To properly handle return, we need to check the expression
+*** and then return the (possibly altered) environment. This
+*** environment is locked; locking the environment will ensure
+*** that no changes are made to this environment through the rest
+*** of the function body, allowing the C semantics to be properly
+*** modelled. For a return with no expression, the environment that
+*** reaches the statement is locked.
+***
+*** NOTE: We could also put an unlocked copy of the environment
+*** in as well using captureDupLockEnv vs. captureLockEnv.. This 
+*** would allow for checks in dead code after the return, which could 
+*** be useful for debugging, but could also lead to more false positives.
+***  
+fmod RETURN-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  var E : Exp . var Env : Env . var K : Computation .
+
+  eq k(stmt!((return;), Env) -> K) = k(es(lk(Env,'return)) -> K) .
+  eq k(stmt!((return E ;), Env) -> K) = k(exp(E) -> discard -> captureLockEnv('return) -> K) env(Env) .
+endfm
+
+***
+*** Semantics for conditionals. Here, we have to take care of the potential 
+*** splitting effect on environments we can get from having multiple branches.
+***
+*** NOTE: restoreTemps will reset the value of temporaries back to the value
+*** they had on entry. CIL-generated temps are only used to store intermediate
+*** values, and no optimizations (like CSE) have been performed; temps do not
+*** "leak" outside of blocks. If we do not do this, we risk generating many
+*** environments that only differ in their temps, since even cases where
+*** both branches make the same changes to variables will make different
+*** changes to temps.
+***
+fmod COND-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  vars ES ES' : EnvSet . var E : Exp . vars S S' : Stmt . var K : Computation .
+  vars Env Env' : Env . 
+  
+  ***
+  *** To handle a one-branch if, first handle the guard expression. Once that comes
+  *** back, handle the body using the resulting environment as the environment
+  *** set. The result should be a new EnvSet, which we will put back into the
+  *** continuation. This way, it can be picked up by the process that handled
+  *** the original if statement. We also save the env after the guard finishes,
+  *** since we could skip the body, as there is no else.
+  ***  
+  op ifne : Stmt -> ComputationItem .
+
+  eq k(stmt!((if ( E ) S), Env) -> K) = k(exp(E) -> discard -> ifne(S) -> restoreTemps(Env) -> K) env(Env) .
+  eq k(ifne(S) -> K) env(Env) = k(stmt(S) -> putEnvSetInK(Env) -> K) envs(Env) .
+  
+  ***
+  *** An if with an else may split the environment, so we need to do something similar
+  *** to what we do for a one-branch if, but store the set from the first branch and
+  *** merge it with the second.
+  ***  
+  op if : Stmt Stmt -> ComputationItem .
+  op else : Stmt Env -> ComputationItem .
+  
+  eq k(stmt!((if ( E ) S else S'), Env) -> K) = k(exp(E) -> discard -> if(S,S') -> restoreTemps(Env) -> K) env(Env) .
+  
+  ***
+  *** The guard E can generate at most one Env. We will take that as the env
+  *** set before the body S is checked, letting standard statement handling
+  *** take care of it. Env is also saved for the else branch, since it will be
+  *** the starting environment for it as well.
+  ***
+  eq k(if(S,S') -> K) env(Env) = k(stmt(S) -> else(S',Env) -> K) envs(Env).
+  
+  ***
+  *** For else, run that in the Env that was active after the guard E was checked.
+  *** ES is the set of environments yielded by S; the set yielded by S' will be
+  *** merged in with this set using mergeEnvs.
+  ***
+  eq k(else(S,Env) -> K) envs(ES) = k(stmt(S) -> mergeEnvs(ES) -> K) envs(Env) .
+endfm
+
+***
+*** Semantics for break. We keep it separate since it is used by both loops
+*** and case statements.
+***
+fmod BREAK-SEMANTICS is
+  including STMT-SEMANTICS .
+
+  var Env : Env . var K : Computation .
+  
+  ***
+  *** If we break, lock the environment, since we don't want
+  *** the code after the break to touch it until it is unlocked
+  *** either by the loop or case logic.
+  ***
+  eq k(stmt!( (break;), Env) -> K) = k(es(lk(Env,'break)) -> K) .
+endfm
+
+***
+*** POLICY HOOK: checkInvariant: used to check that an invariant
+***              holds
+*** POLICY HOOK: finalizeInvariant: used to make any final changes
+***              based on the program invariant in cases where
+***              the loop DOES NOT diverge
+*** POLICY HOOK: finalizeInvariantDiv: used to make any final changes
+***              based on the program invariant in cases where
+***              the loop DOES diverge
+***
+fmod LOOP-INVARIANT-OPS is
+  including STMT-SEMANTICS .
+  
+  op checkInvariant : PolicyExp -> Stmt .
+  op finalizeInvariant : PolicyExp Exp -> ComputationItem .
+  op finalizeInvariantDiv : PolicyExp Exp EnvSet -> ComputationItem .
+endfm
+      
+***
+*** Semantics for loops. Loops can change values similarly to conditions, so we
+*** need to provide similar logic. We also need to provide a maximum number of
+*** times we can symbolically evaluate the loop, since we want to check to see
+*** if it stabilizes but don't want to evaluate the loop forever if it does not. 
+***
+*** NOTE: restoreTemps will reset the value of temporaries back to the value
+*** they had on entry. CIL-generated temps are only used to store intermediate
+*** values, and no optimizations (like CSE) have been performed; temps do not
+*** "leak" outside of blocks. If we do not do this, we risk generating many
+*** environments that only differ in their temps, since entering a loop will
+*** most likely set temporaries that would not be set if the loop is not run,
+*** even if it does not alter the values of non-temporary variables.
+***
+fmod LOOP-SEMANTICS is
+  including STMT-SEMANTICS .
+  including SEQUENCE-SEMANTICS .
+  including LOOP-INVARIANT-OPS .
+  
+  vars ES ES' ES0 : EnvSet . var E : Exp . vars S S' : Stmt . var K : Computation .
+  vars Env Env' : Env . var N : Nat . var CI : ComputationItem .
+  var PE : PolicyExp .
+
+  ***
+  *** To handle a loop, we need to execute the loop body a set number of times to
+  *** see if the environment set stabilizes. If it does not, this is a potential
+  *** error and we need to report it. If it does stabilize, then we can use the
+  *** stabilized set of values.
+  ***
+  op while[_,_] : Exp Stmt -> Stmt .
+  op repeat : Stmt EnvSet Nat -> ComputationItem .
+  op repeat : Stmt EnvSet Nat PolicyExp EnvSet -> ComputationItem .
+  op while : Stmt -> ComputationItem .
+  
+  ***
+  *** We want to save the environment set before processing the loop,
+  *** which is why we declare loops to be special.
+  ***  
+  eq isSpecial(while ( E ) S) = true .
+  eq isSpecial(while[E,S,PE]) = true .
+  
+  ***
+  *** Make a new statement, while[E,S], that will be run by the statement handling logic. We will
+  *** repeat this process 2 times. Quite often the loop body will initialize various values on
+  *** the first iteration; if the second continues making changes, so will the third, etc, since
+  *** execution is symbolic. For invariants, we save the environment set after the first iteration. 
+  *** The invariant processing logic then checks to see if further changes are covered by the invariant, 
+  *** or if the loop changes other values not covered by the invariant.
+  ***
+  *** NOTE: There may be problems in cases where a loop keeps advancing a pointer, causing new
+  *** allocation (like with a list of structures). In this case, we won't converge, but will
+  *** still be sound. It may be worth adding an annotation that can be used in invariants
+  *** to cover this, like @unit(@reachable(p,next,x)) = $m for cases where p = p->next will
+  *** always give us a structure with field x having unit $m.
+  ***
+  eq k(stmt(while ( E ) S) -> K) envs(ES) = 
+     k(stmt(while[E,S]) -> repeat(while[E,S], ES, 2) -> K) envs(ES) .
+     
+  eq k(stmt(while[E,S,PE]) -> K) envs(ES) = 
+     k(stmt(while[E,S]) -> saveEnvSetInRepeat -> repeat(while[E,S], ES, 2, PE, emptyES) -> K) envs(ES) .
+  
+  op saveEnvSetInRepeat : -> ComputationItem .
+  eq k(saveEnvSetInRepeat -> repeat(S,ES,N,PE,emptyES) -> K) envs(ES') =
+     k(repeat(S,ES,N,PE,ES') -> K) envs(ES') .
+     
+  ***
+  *** Logic to check the guard and then run the body. We use restoreTemps here for the same 
+  *** reason it was used in the conditional logic -- it prevents the unnecessary splitting 
+  *** of states. 
+  ***
+  eq k(stmt!( while[E,S], Env ) -> K) = 
+     k(exp(E) -> discard -> while(S) -> restoreTemps(Env) -> K) env(Env) .
+  
+  ***
+  *** We want to capture the env after the guard, since the loop body may not execute,
+  *** and a valid potential env from the while is the one where the expression is 
+  *** evaluated, returns false, and the body never runs. We don't bother to restore
+  *** temps first, since the above rule for while[E,S] will take care of this.
+  ***  
+  eq k(while(S) -> K) env(Env) = k(stmt(S) -> putEnvSetInK(Env) -> K) envs(Env) .
+  
+  ***
+  *** We will continue repeating until either the environments stabilize or we give up
+  *** trying to let them stabilize. If we do stabilize, then take that stabilized env
+  *** set as definitive. If we don't, then issue a warning. Unlock envs in the env set,
+  *** since a nested break or continue may have locked one or more of the envs.
+  ***
+  *** NOTE: There are now two cases for each scenario. The first is where a loop does
+  *** not have an invariant; the second is where it does.
+  ***
+  
+  ***
+  *** Case 1: we stabilize. So, unlock environments locked with break or continue and
+  *** keep going. Note that, while we still check the invariant to ensure it holds, we 
+  *** do no other processing with it, since we don't need it to cause the loop to
+  *** stabilize. Also note that the invariant is checked in an environment where break 
+  *** is NOT unlocked, since loop that exit with a break are allowed to invalidate the 
+  *** invariant. That is why we have to merge envs unlocked with 'break in separately
+  *** after the invariant is checked.
+  ***
+ ceq k(repeat(while[E,S], ES, N) -> K) envs(ES') =
+     k(K) envs(envUnlock('continue,envUnlock('break,ES)))
+  if envUnlock('continue, envUnlock('break, ES)) == envUnlock('continue, envUnlock('break, ES')) .
+     
+ ceq k(repeat(while[E,S], ES, N, PE, ES0) -> K) envs(ES') =
+     k(stmt(checkInvariant(PE)) -> mergeEnvs(envUnlock('break,ES)) -> finalizeInvariant(PE,E) -> K) envs(envUnlock('continue,ES))
+  if envUnlock('continue, envUnlock('break, ES)) == envUnlock('continue, envUnlock('break, ES')) .
+     
+  ***
+  *** Case 2: We have not stabilized, but still have more iterations to go. So, keep
+  *** going, first checking the invariant if we have one. We only unlock envs locked
+  *** with 'continue for the next iteration, since envs locked with 'break would not
+  *** be visible in any further iterations.
+  ***
+ ceq k(repeat(while[E,S], ES, s(N)) -> K) envs(ES') =
+     k(stmt(while[E,S]) -> repeat(while[E,S], (ES | ES'), N) -> K) envs(envUnlock('continue, ES | ES'))
+  if envUnlock('continue, envUnlock('break, ES)) =/= envUnlock('continue, envUnlock('break, ES')) .
+  
+ ceq k(repeat(while[E,S], ES, s(N), PE, ES0) -> K) envs(ES') =
+     k(stmt(checkInvariant(PE)) -> stmt(while[E,S]) -> repeat(while[E,S], (ES | ES'), N, PE, ES0) -> K) envs(envUnlock('continue, ES | ES'))
+  if envUnlock('continue, envUnlock('break, ES)) =/= envUnlock('continue, envUnlock('break, ES')) .
+  
+  ***
+  *** Case 3: We have not stabilized, and are out of iterations. If we do not have
+  *** an invariant, issue a warning, since the remaining analysis may be unsound (we
+  *** could be missing environments that would reveal program errors). If we do
+  *** have an invariant, we first need to check it and, assuming it holds, we need 
+  *** to process it, which may cause us to converge. If we don't converge, the
+  *** invariant will handle issuing the warning for us.
+  ***
+ ceq k(repeat(while[E,S], ES, 0) -> K) envs(ES') =
+     k(issueWarning(1,"Warning: Potential violation: values do not stabilize") -> K) envs(envUnlock('continue,envUnlock('break,(ES | ES'))))
+  if envUnlock('continue, envUnlock('break, ES)) =/= envUnlock('continue, envUnlock('break, ES')) .
+  
+ ceq k(repeat(while[E,S], ES, 0, PE, ES0) -> K) envs(ES') =
+     k(stmt(checkInvariant(PE)) -> finalizeInvariantDiv(PE,E,ES0) -> unlockEnvsOn('break) -> K) envs(envUnlock('continue, (ES | ES')))
+  if envUnlock('continue, envUnlock('break, ES)) =/= envUnlock('continue, envUnlock('break, ES')) .
+  
+  ***
+  *** If we continue, lock the current environment. Logic for break
+  *** is handled separately, since break is also used in switch
+  *** statements.
+  ***
+  eq k(stmt!( (continue;), Env) -> K) = k(es(lk(Env,'continue)) -> K) .
+endfm
+
+***
+*** Semantics for switch statements. Like semantics for conditionals, 
+*** but potentially more branches, plus we need to properly account 
+*** for fall-through on branches that don't include a break.
+***
+*** NOTE: Since cases are restricted to integral constant expressions that
+*** cannot change state (1, 'c', etc), we don't need to capture the state
+*** after evaluating E, like we need to do in the conditional semantics.
+***
+fmod SWITCH-SEMANTICS is
+  including STMT-SEMANTICS .
+  including BLOCK-SEMANTICS .
+  
+  var E : Exp . var SL : StmtList . var K : Computation .
+  var Env : Env . var ES : EnvSet . var S : Stmt .
+
+  op switch : StmtList Env -> ComputationItem .
+  op switch : StmtList -> ComputationItem .
+  
+  eq isSpecial( case_:(E) ) = true .
+  eq isSpecial( default: ) = true .
+
+  op isCaseLabel : Stmt -> Bool .
+  eq isCaseLabel( case_:(E) ) = true .
+  eq isCaseLabel( default: ) = true .
+  eq isCaseLabel(S) = false [owise] .
+
+  ***
+  *** When we first see a switch statement, we need to evaluate E and keep the generated
+  *** environment as the "starter" environment for the statements in the switch.
+  ***  
+  eq k(stmt!((switch ( E ) SL), Env) -> K) = k(exp(E) -> discard -> switch(stripBlock(SL)) -> K) env(Env) .
+  eq k(switch( SL ) -> K) env(Env) = k(switch(SL,Env) -> K) envs(Env) .
+  
+  ***
+  *** Now, for each statement in the switch, check to see if it is a label or a normal
+  *** statement. If it is a label, we need to add back in the original switch environment
+  *** generated after evaluating E, since we could jump directly to the label. We keep the
+  *** other labels around to model fall-through (they will be locked if there was a break).
+ ceq k(switch(S SL, Env) -> K) envs(ES) = k(stmt(S) -> switch(SL, Env) -> K) envs(Env | ES)
+  if isCaseLabel(stripBlock(S)) == true .
+  
+  ***
+  *** If this isn't a case label, evaluate the statement in the current env set.
+  ***
+ ceq k(switch(S SL, Env) -> K) envs(ES) = k(stmt(S) -> switch(SL, Env) -> K) envs(ES)
+  if isCaseLabel(stripBlock(S)) == false .
+  
+  ***
+  *** If this is a switch with an empty list, just put the starter environment
+  *** and the current env set back in as the result. Also, unlock anything locked
+  *** by a break, since it will be released on exit from the switch.
+  ***
+  eq k(switch(empty, Env) -> K) envs(ES) = k(es(Env | ES) -> unlockOn('break) -> K) .
+  
+  ***
+  *** To process labels, just discard them; handling is taken care of above
+  ***
+  eq k(stmt(case_:(E)) -> K) = k(K) .
+  eq k(stmt(default:) -> K) = k(K) .
+endfm
+
+***
+*** Semantics for jumps. We currently only handle "sensible" gotos -- those
+*** that jump out of a block into an enclosing block, for instance, but not
+*** those that jump to arbitrary locations in a function (into a branch
+*** of a conditional, for instance). 
+***
+fmod GOTO-SEMANTICS is
+  including STMT-SEMANTICS .
+  including GOTO-MAP .
+  including STATE .
+    
+  op gotoMap : GotoMapSet -> State [format (r! o)] .    
+  
+  var X : Identifier . var S : Stmt . vars ES ES' ES'' ESM : EnvSet .
+  vars N M : Nat . vars K K' : Computation .  var GM : GotoMap .
+  var GMS : GotoMapSet .
+  
+  ***
+  *** Labels are processed as normal statements, but with some
+  *** additional bookkeeping. We also keep track of the continuation and
+  *** any environments that "reach" the label (either through jumps to it
+  *** or through standard execution). At the end, if the jump environment
+  *** differ from the environments actually executed, we can replay to
+  *** try to reach a fixed-point.
+  ***
+  eq isSpecial(_:(X) ) = true .
+  
+  ***
+  *** First label case: we hit a label that already has a map entry, meaning
+  *** either we are replaying or we had a jump to this label in earlier
+  *** code. Add the current environment set to the set of all environments
+  *** that have reached this label. We store K and throw away K' since K'
+  *** may be just a placeholder.
+  ***
+  eq k(stmt( _:(X) ) -> K) envs(ES) gotoMap(GMS [X,N,M,K',ES',ES''     ]) =
+     k(                 K) envs(ES) gotoMap(GMS [X,N,M,K, ES',ES | ES'']) .
+     
+  ***
+  *** Second label case: we hit a label we have not seen before. Add a new
+  *** entry, saving the current environment set as the set of labels
+  *** that have reached this label. We store K for later replay.
+  ***
+  eq k(stmt( _:(X) ) -> K) envs(ES) gotoMap(GMS                     ) =
+     k(                 K) envs(ES) gotoMap(GMS [X,0,0,K,emptyES,ES]) [owise] .
+     
+  ***
+  *** Process jumps to labels (gotos).
+  ***
+  eq isSpecial(goto X ;) = true .
+  
+  ***
+  *** First goto case: we are jumping to a label with a map entry.
+  *** Save the current environment in the slot made for jump
+  *** environments -- this will be used later to replay the goto with
+  *** the current environment, to simulate actual goto semantics.
+  ***
+  eq k(stmt(goto X ;) -> K) envs(ES) gotoMap(GMS [X,N,M,K',ES',ES'']) =
+     k(K) envs(ES) gotoMap(GMS [X,N,M,K',ES | ES',ES'']) .
+     
+  ***
+  *** Second goto case: we are jumping to a label we have not seen
+  *** yet, so this must be a forward jump. Create a default map entry.
+  ***
+  eq k(stmt(goto X ;) -> K) envs(ES) gotoMap(GMS) =
+     k(K) envs(ES) gotoMap(GMS [X,0,0,nil,ES,emptyES]) [owise] .
+
+  ***
+  *** This is the code used to replay goto-created information at the
+  *** end of a function. If we have environments that were active when
+  *** we jumped to a label that do not match environments seen at that
+  *** label before, we will want to rerun the goto statement, and
+  *** following statements, using all the environments. Each time we do
+  *** this, we set a flag on the goto map. Once we have processed all
+  *** goto maps, we can reset this flag and process them again. This
+  *** continues twice, like the loop. If, at that point, we are still
+  *** visiting a labeled statement with new environments, issue a
+  *** warning and give up.
+  ***
+  *** TODO: Twice may not be enough -- we probably need to base
+  *** this on the number of gotos which could alter values
+  *** downstream, and so this needs to be analyzed further. Twice
+  *** at least gives us quick convergence/divergence, and handles
+  *** the most common case of gotos in CIL generated code -- gotos
+  *** introduced from loop transformations.
+  ***
+  op replayGM : -> ComputationItem .
+  
+  ***
+  *** First replay case: ES' (envs that jump to X) is not a subset
+  *** of ES'', meaning that we have envs that were not active at
+  *** the time the label was hit in straight-line execution. So,
+  *** we need to run from the label again with the jump envs.
+  ***
+ ceq k(replayGM -> K ) envs(ES ) gotoMap(GMS [X,N,0,K',ES',ES''      ]) =
+     k(            K') envs(ESM) gotoMap(GMS [X,s(N),1,K',emptyES,ESM])
+  if ES' =/= emptyES /\ ESM := ES' | ES'' /\ ESM =/= ES'' /\ N < 2 .
+  
+  ***
+  *** Second replay case: ES' is a subset of ES''. We don't need
+  *** to replay this, but we flag it so we don't try it again.
+  ***
+ ceq k(replayGM -> K) envs(ES) gotoMap(GMS [X,N,0,K',ES',ES''       ]) =
+     k(replayGM -> K) envs(ES) gotoMap(GMS [X,s(N),1,K',emptyES,ES''])
+  if ESM := ES' | ES'' /\ ESM == ES'' .
+
+  ***
+  *** Tbird case: after 2 tries, we still haven't stabilized from this
+  *** label. Report this as a warning, just like we do for loops. This
+  *** will report multiple errors, one for each label.
+  ***
+  *** TODO: Need to include label here, so we know which caused the problem.
+  ***
+ ceq k(replayGM ->                                                                            K) envs(ES) gotoMap(GMS [X,N,0,K',ES',ES''   ]) =
+     k(issueWarning(1,"Warning: Goto environments fail to stabilize after 2 attempts") -> replayGM -> K) envs(ES) gotoMap(GMS [X,s(N),1,K',ES',ES''])
+  if ES' =/= emptyES /\ ESM := ES' | ES'' /\ ESM =/= ES'' /\ N >= 2 .
+  
+  ***
+  *** Fourth case: all envs in the env set have been processed. Clear
+  *** the tag (the 0/1 flag above) and keep going if we haven't already
+  *** exceeded the number of tries.
+  ***
+ ceq k(replayGM -> K) envs(ES) gotoMap(GMS) =
+     k(replayGM -> K) envs(ES) gotoMap(clearAllTags(GMS))
+  if allTagged(GMS) /\ continueGM(GMS) .
+  
+  ***
+  *** Fifth case: all envs in the env set have been processed the maximum
+  *** number of times. Stop replaying.
+  ***
+ ceq k(replayGM -> K) envs(ES) gotoMap(GMS) =
+     k(            K) envs(ES) gotoMap(GMS)
+  if allTagged(GMS) /\ continueGM(GMS) == false .
+  
+  ***
+  *** Handle goto map tagging. This is used to ensure we process each map entry
+  *** once before processing an entry again. Functionality here checks to see
+  *** when all entries are tagged, and also provides a way to clear the tag on
+  *** all entries (to start a new round).
+  ***     
+  op entryTagged : GotoMap -> Bool .
+  op allTagged : GotoMapSet -> Bool .
+  op clearAllTags : GotoMapSet -> GotoMapSet .
+  op continueGM : GotoMapSet -> Bool .
+    
+  eq entryTagged([X,N,0,K,ES,ES']) = false .
+  eq entryTagged([X,N,1,K,ES,ES']) = true .
+  eq allTagged(emptyGM) = true .
+  eq allTagged(GM GMS) = entryTagged(GM) and allTagged(GMS) .
+  eq clearAllTags([X,N,1,K,ES,ES'] GMS) = [X,N,0,K,ES,ES'] clearAllTags(GMS) .
+  eq clearAllTags(emptyGM) = emptyGM .
+  eq continueGM([X,N,1,K,ES,ES'] GMS) = (if N <= 2 then true else false fi) or continueGM(GMS) .
+  eq continueGM(emptyGM) = false .
+endfm
+
+***
+*** Uses in cases where we can revert environment information to an earlier version.
+*** Useful for when we want to temporarily change a value, based (for instance) on
+*** additional information, but then change it back later once we no longer have that
+*** information. In general, we only revert when something has not been changed; so,
+*** if given location L with value V we give L V', and then no changes are made to
+*** location L, we can revert back to V, but if L changes (even just again being
+*** assigned V'), it keeps the value.
+***
+fmod REVERT-HELPERS is
+  including HELPERS .
+  including REVERT-VALUE-ENVIRONMENT .
+  including STMT-SEMANTICS .
+    
+  var L : Location . var K : Computation . var X : Identifier .
+  vars V V' : Value . vars EI EI' : EnvItem . var Env : Env .
+  var RTS : RevertTupleSet . var ES : EnvSet .
+
+  ***
+  *** Clear the revert flag on a location
+  ***
+  op clearRevert : Location -> ComputationItem .
+  eq k(clearRevert(L) -> K) env(Env [X,L,V,EI revert]) = k(K) env(Env [X,L,V,EI]) .
+  eq k(clearRevert(L) -> K) env(Env [X,L,V,EI]) = k(K) env(Env [X,L,V,EI]) [owise] .
+  
+  ***
+  *** Mark that a location should revert; don't mark it if it is already marked.
+  ***
+  op markRevert : Location Env -> Env .
+  eq markRevert(L, Env [X,L,V,EI revert]) = Env [X,L,V,EI revert] .
+  eq markRevert(L, Env [X,L,V,EI]) = Env [X,L,V,EI revert] [owise] .
+  
+  ***
+  *** Sorts and ops used by revertLocations, below
+  ***
+  sorts RevertTuple RevertTupleSet .
+  subsort RevertTuple < RevertTupleSet .
+  
+  op [_,_,_] : Location Value EnvItem -> RevertTuple .
+  op emptyRTS : -> RevertTupleSet .
+  op __ : RevertTupleSet RevertTupleSet -> RevertTupleSet [assoc comm id: emptyRTS] .
+
+  ***
+  *** Any locations in the environment marked as revert will be set back
+  *** to how they were using the information in the revertLocations computation
+  *** item.
+  ***
+  op revertLocations : RevertTupleSet -> ComputationItem .
+  eq k(es(ES | Env [X,L,V,EI revert]) -> revertLocations([L,V',EI'] RTS) -> K) =
+     k(es(ES | Env [X,L,V',EI']) -> revertLocations([L,V',EI'] RTS) -> K) .
+  eq k(es(ES) -> revertLocations(RTS) -> K) = k(es(ES) -> K) [owise] .
+endfm
+    
+***
+*** For declarations, there are two general classes: formals and locals. Within these,
+*** there are various types, such as structures, pointers, etc. All these are handled
+*** here. We assume that any globals used in the function are declared in the function
+*** as well -- this is handled for us by CIL. Globals are treated just like formals.
+***
+*** Note that we use locking for both formals and globals. The locking is used to
+*** ensure that changes which could be seen in the callee are made only in
+*** assertions and assumptions (where they are documented) instead of being made
+*** in the code. This does still allow mistakes to be made due to incorrect
+*** annotations, but prevents inadvertent changes. Note that a big reason for this
+*** is aliasing, which could cause unreported analysis problems if a scheme such
+*** as this is not used.
+***
+*** NOTE: We are adding support so that changes in globals must be mentioned in the
+*** postcondition; this has not been added yet. For now, we just lock globals similarly
+*** to how we lock formals.
+***
+*** NOTE: Better support for aliasing and alias analysis is being added; with that information,
+*** is may be possible to loosen up some of the locking restrictions used here.
+*** 
+fmod DECL-SEMANTICS-WLOCK is
+  including STMT-SEMANTICS .
+  including LOCK-HELPERS .
+  including EXP-SEMANTICS-ALLOCATION .
+  including TYPED-ENVIRONMENT .
+    
+  var Dec : Declaration . var K : Computation .
+  vars X X' : Identifier . var N : Nat . var Env : Env .
+  var DSL : DeclarationSpecifierList . var D : Declarator .
+  var EI : EnvItem .
+  
+  ***
+  *** First, handle pointers. If this isn't a formal or a global, just create a new pointer and allocate
+  *** it to the next location. If this is a formal, do the same, but lock what the pointer points to; we don't
+  *** need to lock the pointer itself, since C is call by value, so assignments directly to the parameter aren't
+  *** visible outside the function. If this is a global, also lock the pointer itself, since changes to it are
+  *** visible outside the function.
+  ***
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocPtr(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isPointerDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ formalNameDecl(Dec) == false /\ globalNameDecl(Dec) == false .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocPtr(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsPast(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isPointerDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ formalNameDecl(Dec) == true .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocPtr(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsThrough(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isPointerDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ globalNameDecl(Dec) == true .
+  
+  ***
+  *** Logic for arrays, similar to that for pointers. It is possible in C99 to have 
+  *** array parameters to functions, although CIL may transform these into pointers. 
+  *** We will just lock everything, although it doesn't matter much since only the 
+  *** actual values of the array can be changed.
+  ***
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocArray(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isArrayDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ X := getDeclName(Dec) /\ 
+     formalNameDecl(Dec) == false /\ globalNameDecl(Dec) == false .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocArray(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsThrough(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isArrayDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ formalNameDecl(Dec) == true .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocArray(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsThrough(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isArrayDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ globalNameDecl(Dec) == true .
+  
+  ***
+  *** Logic for structures. Again, for globals we lock the entire struct; for formals 
+  *** we just lock the contents, since assiging to the var name of the struct will 
+  *** replace it with a different struct.
+  ***
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocStruct(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isStructDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ X := getDeclName(Dec) /\ 
+     formalNameDecl(Dec) == false /\ globalNameDecl(Dec) == false .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocStruct(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsPast(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isStructDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ formalNameDecl(Dec) == true .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocStruct(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsThrough(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isStructDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ globalNameDecl(Dec) == true .
+     
+  ***
+  *** Logic for unions. We treat these like structures for now.
+  ***
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocUnion(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isUnionDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ X := getDeclName(Dec) /\ 
+     formalNameDecl(Dec) == false /\ globalNameDecl(Dec) == false .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocUnion(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsPast(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isUnionDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ formalNameDecl(Dec) == true .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocUnion(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsThrough(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isUnionDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ globalNameDecl(Dec) == true .
+     
+  ***
+  *** Logic for scalars. Scalars only need to be locked if they are globals. 
+  ***
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocScalar(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isScalarDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ X := getDeclName(Dec) /\ 
+     formalNameDecl(Dec) == false /\ globalNameDecl(Dec) == false .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocScalar(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isScalarDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ formalNameDecl(Dec) == true .
+     
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocScalar(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsThrough(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isScalarDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ globalNameDecl(Dec) == true .
+  
+  ***
+  *** Logic for enums. This is similar to the logic for scalars.
+  ***
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocEnum(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isEnumDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ X := getDeclName(Dec) /\ 
+     formalNameDecl(Dec) == false /\ globalNameDecl(Dec) == false .
+
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocEnum(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isEnumDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ formalNameDecl(Dec) == true .
+     
+ ceq k(stmt!(Dec, Env) -> K) nextLoc(N) =
+     k(allocEnum(DSL,D) -> falloc(DSL,D,loc(N)) -> storeValIn(loc(N)) -> lockValsThrough(loc(N)) -> captureEnv -> K) 
+     env(Env [X,loc(N),noval,dsl(DSL) dcl(D)]) nextLoc(s(N))
+  if isEnumDecl(Dec) /\ DSL := getDeclDSL(Dec) /\ D := getDeclD(Dec) /\ 
+     X := getDeclName(Dec) /\ globalNameDecl(Dec) == true .
+
+  ***
+  *** No logic is needed for functions, since we never have a direct declaration of a 
+  *** function that we need to handle; instead, we will have function pointers, which 
+  *** will be handled using the logic for pointers.
+  ***
+endfm    
+
+***
+*** Base semantics for processing havoc. When we havoc an expression,
+*** we start with the location of the expression and find other reachable
+*** locations, setting them all to some default value.
+***
+*** POLICY HOOK: clearLoc
+***
+fmod HAVOC-SEMANTICS is
+  including STMT-SEMANTICS .
+  including POLICY-SYNTAX .
+  including HELPERS .
+  including EXP-SEMANTICS-ASSIGN-BASE .
+  including EXP-SEMANTICS-ASSIGN-LOCK .
+  including EXP-SEMANTICS-ASSIGN-FINAL .
+  including EXP-SEMANTICS-ASSIGN-UNKNOWN .
+  
+  sort LocationSet . subsort Location < LocationSet .
+  op emptyLS : -> LocationSet .
+  op _#_ : LocationSet LocationSet -> LocationSet [assoc comm id: emptyLS] .
+  
+  var K : Computation . var EL : ExpList . var Env : Env .
+  var V : Value . var VL : ValueList . var LS : LocationSet .
+  var L : Location . var LL : LocationList . vars X X' X'' : Identifier .
+  var SFS : SFieldSet . var EI : EnvItem .
+  
+  ***
+  *** Helpers
+  ***
+  op _inLS_ : Location LocationSet -> Bool .
+  eq (L inLS (L # LS)) = true .
+  eq (L inLS LS) = false [owise] .
+  
+  ***
+  *** Step 1: we havoc an expression list; so first, evaluate the list.
+  *** Note that we check for @none and @all first to make sure we actually are
+  *** havocing something.
+  ***
+  eq k(stmt!((#havoc @none ;), Env) -> K) = k(es(Env) -> K) .
+ ceq k(stmt!((#havoc EL ;), Env) -> K) = k(exp(EL) -> havoc -> K) env(Env) if EL =/= @none .
+  
+  ***
+  *** Step 2: once we have values back, get any reachable locations, placing
+  *** them in a set. Also get the initial list of locations to completely
+  *** reallocate.
+  ***
+  op havoc : -> ComputationItem .
+  op initLocs : LocationList -> ComputationItem .
+  op havocLocs : LocationSet -> ComputationItem .
+  op reachableLocs : ValueList -> ComputationItem .
+  op getInitLocs : ValueList -> LocationList .
+
+  ***
+  *** If we havoc a value, we don't reallocate the base value, since
+  *** C is a call by value language, but we do reallocate anything
+  *** reachable through that value. We don't make this transitive,
+  *** though -- this is only what is reachable from the first level.
+  ***
+  *** TODO: May want to check for triggerAlloc and remove it, so
+  *** havoc doesn't allocate something that wasn't even there yet.
+  *** As for now, it may do so. We do allow havoc of arr, since we
+  *** can use arr as ptr.
+  ***
+  *** TODO: This "over-havocs", in that even scalars will be reallocated.
+  *** We should limit this to just pointers or arrays reachable without
+  *** following a pointer (arrays just in case they are passed as pointers,
+  *** although we should not be able to reallocate them, so maybe leave them
+  *** out after all).
+  ***
+  eq getInitLocs(lvp(L,V),VL) = getInitLocs(V,VL) .
+  eq getInitLocs(ptr(L),VL) = L, getInitLocs(VL) .
+  eq getInitLocs(arr(L),VL) = L, getInitLocs(VL) .
+  eq getInitLocs(initValue(L),VL) = L, getInitLocs(VL) .
+  eq getInitLocs(struct(X,SFS),VL) = getStructLocs(SFS), getInitLocs(VL) .
+  eq getInitLocs(union(X,SFS),VL) = getStructLocs(SFS), getInitLocs(VL) .
+  
+  eq getInitLocs(empty) = empty .
+  eq getInitLocs(V,VL) = getInitLocs(VL) [owise] .
+  
+  eq k(val(V,VL) -> havoc -> K) = 
+     k(reachableLocs(V,VL) -> havocLocs(emptyLS) -> initLocs(getInitLocs(V,VL)) -> K) .
+
+  ***
+  *** Fixpoint operation: get all locations reachable through the values
+  ***       
+ ceq k(reachableLocs(lvp(L,V),VL) -> havocLocs(LS) -> K) env(Env) =
+     k(reachableLocs(V,VL) -> havocLocs(L # LS) -> K) env(Env)
+  if (not (L inLS LS)) and (L =/= triggerAlloc) .
+  
+ ceq k(reachableLocs(ptr(L),VL) -> havocLocs(LS) -> K) env(Env [X,L,V,EI]) =
+     k(reachableLocs(V,VL) -> havocLocs(L # LS) -> K) env(Env [X,L,V,EI])
+  if (not (L inLS LS)) and (L =/= triggerAlloc) .
+  
+ ceq k(reachableLocs(arr(L),VL) -> havocLocs(LS) -> K) env(Env [X,L,V,EI]) =
+     k(reachableLocs(V,VL) -> havocLocs(L # LS) -> K) env(Env [X,L,V,EI])
+  if (not (L inLS LS)) and (L =/= triggerAlloc) .
+  
+ ceq k(reachableLocs(initValue(L),VL) -> havocLocs(LS) -> K) env(Env [X,L,V,EI]) =
+     k(reachableLocs(V,VL) -> havocLocs(L # LS) -> K) env(Env [X,L,V,EI])
+  if (not (L inLS LS)) and (L =/= triggerAlloc) .
+
+ ceq k(reachableLocs(struct(X',sfield(X'',L) SFS),VL) -> havocLocs(LS) -> K) env(Env [X,L,V,EI]) =
+     k(reachableLocs(struct(X',SFS),V,VL) -> havocLocs(L # LS) -> K) env(Env [X,L,V,EI])
+  if (not (L inLS LS)) and (L =/= triggerAlloc) .
+
+ ceq k(reachableLocs(struct(X',sfield(X'',L) SFS),VL) -> havocLocs(LS) -> K) env(Env [X,L,V,EI]) =
+     k(reachableLocs(struct(X',SFS),VL) -> havocLocs(L # LS) -> K) env(Env [X,L,V,EI])
+  if (L inLS LS) or (L =/= triggerAlloc) .
+      
+  eq k(reachableLocs(struct(X',nil),VL) -> havocLocs(LS) -> K) env(Env) =
+     k(reachableLocs(VL) -> havocLocs(LS) -> K) env(Env) .
+     
+ ceq k(reachableLocs(union(X',sfield(X'',L) SFS),VL) -> havocLocs(LS) -> K) env(Env [X,L,V,EI]) =
+     k(reachableLocs(union(X',SFS),V,VL) -> havocLocs(L # LS) -> K) env(Env [X,L,V,EI])
+  if (not (L inLS LS)) and (L =/= triggerAlloc) .
+
+ ceq k(reachableLocs(union(X',sfield(X'',L) SFS),VL) -> havocLocs(LS) -> K) env(Env [X,L,V,EI]) =
+     k(reachableLocs(union(X',SFS),VL) -> havocLocs(L # LS) -> K) env(Env [X,L,V,EI])
+  if (L inLS LS) or (L =/= triggerAlloc) .
+      
+  eq k(reachableLocs(union(X',nil),VL) -> havocLocs(LS) -> K) env(Env) =
+     k(reachableLocs(VL) -> havocLocs(LS) -> K) env(Env) .
+     
+  eq k(reachableLocs(V,VL) -> havocLocs(LS) -> K) env(Env) =
+     k(reachableLocs(VL) -> havocLocs(LS) -> K) env(Env) [owise] .
+     
+  eq k(reachableLocs(empty) -> havocLocs(LS) -> K) env(Env) =
+     k(havocLocs(LS) -> K) env(Env) .
+     
+  ***
+  *** For each location in the set, do something policy-specific to clear it out.
+  ***
+  op clearLoc : Location -> ComputationItem .
+  eq k(havocLocs(L # LS) -> K) = k(clearLoc(L) -> havocLocs(LS) -> K) .
+  eq k(havocLocs(emptyLS) -> K) = k(K) .
+  
+  ***
+  *** For each of the locations in the list, completely reallocate it
+  ***
+  eq k(initLocs(L,LL) -> K) = 
+     k(val(unkv) -> assign(L,failOnLock failOnFinal checkForUnknown) -> initLocs(LL) -> K) . 
+  eq k(initLocs(empty) -> K) = k(captureEnv -> K) .
+endfm
+
+***
+*** Base semantics for processing unlock. When we unlock an expression,
+*** we start with the location of the expression and unlock all reachable
+*** locations. Note that this does NOT deal with finalization.
+***
+fmod UNLOCK-SEMANTICS is
+  including STMT-SEMANTICS .
+  including POLICY-SYNTAX .
+  including LOCK-HELPERS .
+  
+  var K : Computation . var EL : ExpList . var Env : Env .
+  var V : Value . var VL : ValueList . 
+  var L : Location . var LL : LocationList . vars X X' X'' : Identifier .
+  var SFS : SFieldSet . var EI : EnvItem .
+  
+  ***
+  *** Step 1: we unlock an expression list; so first, evaluate the list.
+  *** Like with havoc, we check for @none and handle that separately.
+  ***
+  eq k(stmt!((#unlock @none ;), Env) -> K) = k(es(Env) -> K) .
+ ceq k(stmt!((#unlock EL ;), Env) -> K) = k(exp(EL) -> unlock -> K) env(Env) if EL =/= @none .
+  
+  ***
+  *** Step 2: once we have values back, get the locations represented by
+  *** the initial values. Then, start the unlock process, which will find
+  *** other locations reachable from these.
+  ***
+  op unlock : -> ComputationItem .
+  op getVisibleLocs : ValueList -> LocationList .
+
+  eq getVisibleLocs(lvp(L,V),VL) = L, getVisibleLocs(VL) .
+  eq getVisibleLocs(struct(X,SFS),VL) = getStructLocs(SFS), getVisibleLocs(VL) .
+  eq getVisibleLocs(union(X,SFS),VL) = getStructLocs(SFS), getVisibleLocs(VL) .
+  eq getVisibleLocs(ptr(L),VL) = L, getVisibleLocs(VL) .
+  eq getVisibleLocs(arr(L),VL) = L, getVisibleLocs(VL) .
+  eq getVisibleLocs(initValue(L),VL) = L, getVisibleLocs(VL) .
+  eq getVisibleLocs(empty) = empty .
+  eq getVisibleLocs(V,VL) = getVisibleLocs(VL) [owise] .
+  
+  ***
+  *** NOTE: This is a bit of a hack and needs to be fixed. Formal parameters
+  *** are not locked on the location assigned to the parameter, only on locations
+  *** reachable from that parameter. This is because C is call by value, so
+  *** assigning something new to the parameter's allocated location would not
+  *** change anything in the caller, meaning we don't bother locking it. Because
+  *** of this, unlockValsThrough won't work on formals, since it stops when it
+  *** finds unlocked locations. To handle globals, which ARE locked, even on the
+  *** location associated with the variable, unlockValsThrough is used. This is
+  *** redundant on the formal parameters, but it won't traverse so is not expensive.
+  *** 
+  eq k(val(VL) -> unlock -> K) = 
+     k(unlockValsPast(getVisibleLocs(VL)) -> unlockValsThrough(getVisibleLocs(VL)) -> captureEnv -> K) .
+endfm
+
+***
+*** Base semantics and helpers for invariants.
+***
+fmod INVARIANT-SEMANTICS is
+  including STMT-SEMANTICS .
+  including POLICY-SYNTAX .
+  including LOCK-HELPERS .
+  including LOOP-INVARIANT-OPS .
+  
+  var PE : PolicyExp . var K : Computation . var Env : Env .
+  var ES : EnvSet .
+endfm

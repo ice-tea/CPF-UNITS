@@ -1,0 +1,112 @@
+#!/bin/bash
+
+echo "" >new.C
+echo "" >temp.C
+let check_f=1
+let bb_f=1
+let left_f=0
+let right_f=0
+
+while read line_f
+ do 
+  
+      let len=${#line_f}
+     
+
+       for ((i=0; i<=len; ++i)) 
+       do
+          echo -n "${line_f:i:1}"
+             if [ "${line_f:i:1}" = "{" ]  
+             then 
+              
+               let left_f=left_f+1;
+                 if [ "$check_f" -eq "$bb_f" ]
+                       then
+                        
+                        
+                    let check_f=0
+                    
+                  fi
+             fi
+            if [ "${line_f:i:1}" = "}" ]  
+             then 
+               let right_f=right_f+1;
+            fi
+          if [ "$left_f" -eq "$right_f" ]
+           then
+             let check_f=1
+           fi 
+        
+        done   
+       if [ "$check_f" -eq "$bb_f" ]
+         then
+          #.*___CPFAssume(UNITS,"@unit(num3) = $meter");
+           grep '.*___CPFAssume.*);$' <(echo $line_f) >>temp.C
+       fi
+        
+    
+done < $1
+let check=1
+let bb=1
+let left=0
+let right=0
+while read line
+ do 
+       if [ "$check" -eq "$bb" ]
+          then
+             if  grep '.*___CPFAssume.*);$' <(echo $line) ##
+                then
+                    continue
+             fi
+        fi
+      let len=${#line}
+     
+
+       for ((i=0; i<=len; ++i)) 
+       do
+         #if ! grep '^int.*\*\/$' <(echo $line)
+           #then
+           # if [ "$check" -ne "$bb" ]
+             
+             echo -n "${line:i:1}">>new.C
+                if [ "$cur" != "" ]
+                 then
+                pre="$cur"
+                fi
+                cur="${line:i:1}"  
+         #fi
+           if [ "${line:i:1}" = "{" ]
+                 
+             then
+                
+               let left=left+1;
+                 if [ "$check" -eq "$bb" ]
+                    then
+                     if [ "$pre" = ")" ] 
+                       then
+                         while read line_t
+                          do 
+    
+                           echo "$line_t" >>new.C
+                          done < temp.C
+                      fi  
+                    let check=0
+                  fi
+             fi
+            if [ "${line:i:1}" = "}" ]  
+             then 
+               let right=right+1;
+            fi
+          if [ "$left" -eq "$right" ]
+           then
+             let check=1
+           fi 
+      #   if [ "$check" -ne "$bb" ]
+       #     then 
+        #          echo -n "${line:i:1}">>new.C
+         # fi
+        done   
+        echo "">>new.C
+    
+done < $1
+

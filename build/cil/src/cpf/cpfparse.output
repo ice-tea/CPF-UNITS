@@ -1,0 +1,344 @@
+   0  $accept : %entry% $end
+
+   1  cpf_annotation : cpf_annotation_aux END
+
+   2  cpf_annotation_aux : cs_cpf_exp_list
+   3                     | cpf_exp_list
+
+   4  cs_cpf_exp_list : cpf_exp COMMA cs_cpf_exp_list_aux
+
+   5  cs_cpf_exp_list_aux : cpf_exp
+   6                      | cpf_exp COMMA cs_cpf_exp_list_aux
+
+   7  cpf_exp_list : cpf_exp
+   8               | cpf_exp cpf_exp_list
+
+   9  cpf_exp : DEREF cpf_exp
+  10          | LPAREN cpf_annotation_aux RPAREN
+  11          | cpf_exp DOT cpf_exp
+  12          | cpf_exp ARROW cpf_exp
+  13          | VAR
+  14          | FSYM
+  15          | VSYM
+  16          | UNINTERP
+  17          | NUM
+
+  18  %entry% : '\001' cpf_annotation
+
+state 0
+	$accept : . %entry% $end  (0)
+
+	'\001'  shift 1
+	.  error
+
+	%entry%  goto 2
+
+
+state 1
+	%entry% : '\001' . cpf_annotation  (18)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	DEREF  shift 9
+	.  error
+
+	cpf_annotation  goto 10
+	cpf_annotation_aux  goto 11
+	cs_cpf_exp_list  goto 12
+	cpf_exp_list  goto 13
+	cpf_exp  goto 14
+
+
+state 2
+	$accept : %entry% . $end  (0)
+
+	$end  accept
+
+
+state 3
+	cpf_exp : FSYM .  (14)
+
+	.  reduce 14
+
+
+state 4
+	cpf_exp : VSYM .  (15)
+
+	.  reduce 15
+
+
+state 5
+	cpf_exp : VAR .  (13)
+
+	.  reduce 13
+
+
+state 6
+	cpf_exp : UNINTERP .  (16)
+
+	.  reduce 16
+
+
+state 7
+	cpf_exp : NUM .  (17)
+
+	.  reduce 17
+
+
+state 8
+	cpf_exp : LPAREN . cpf_annotation_aux RPAREN  (10)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	DEREF  shift 9
+	.  error
+
+	cpf_annotation_aux  goto 15
+	cs_cpf_exp_list  goto 12
+	cpf_exp_list  goto 13
+	cpf_exp  goto 14
+
+
+state 9
+	cpf_exp : DEREF . cpf_exp  (9)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	DEREF  shift 9
+	.  error
+
+	cpf_exp  goto 16
+
+
+state 10
+	%entry% : '\001' cpf_annotation .  (18)
+
+	.  reduce 18
+
+
+state 11
+	cpf_annotation : cpf_annotation_aux . END  (1)
+
+	END  shift 17
+	.  error
+
+
+state 12
+	cpf_annotation_aux : cs_cpf_exp_list .  (2)
+
+	.  reduce 2
+
+
+state 13
+	cpf_annotation_aux : cpf_exp_list .  (3)
+
+	.  reduce 3
+
+
+state 14
+	cs_cpf_exp_list : cpf_exp . COMMA cs_cpf_exp_list_aux  (4)
+	cpf_exp_list : cpf_exp .  (7)
+	cpf_exp_list : cpf_exp . cpf_exp_list  (8)
+	cpf_exp : cpf_exp . DOT cpf_exp  (11)
+	cpf_exp : cpf_exp . ARROW cpf_exp  (12)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	COMMA  shift 18
+	LPAREN  shift 8
+	ARROW  shift 19
+	DEREF  shift 9
+	DOT  shift 20
+	RPAREN  reduce 7
+	END  reduce 7
+
+	cpf_exp_list  goto 21
+	cpf_exp  goto 22
+
+
+state 15
+	cpf_exp : LPAREN cpf_annotation_aux . RPAREN  (10)
+
+	RPAREN  shift 23
+	.  error
+
+
+state 16
+	cpf_exp : DEREF cpf_exp .  (9)
+	cpf_exp : cpf_exp . DOT cpf_exp  (11)
+	cpf_exp : cpf_exp . ARROW cpf_exp  (12)
+
+	ARROW  shift 19
+	DOT  shift 20
+	FSYM  reduce 9
+	VSYM  reduce 9
+	VAR  reduce 9
+	UNINTERP  reduce 9
+	NUM  reduce 9
+	COMMA  reduce 9
+	LPAREN  reduce 9
+	RPAREN  reduce 9
+	DEREF  reduce 9
+	END  reduce 9
+
+
+state 17
+	cpf_annotation : cpf_annotation_aux END .  (1)
+
+	.  reduce 1
+
+
+state 18
+	cs_cpf_exp_list : cpf_exp COMMA . cs_cpf_exp_list_aux  (4)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	DEREF  shift 9
+	.  error
+
+	cpf_exp  goto 24
+	cs_cpf_exp_list_aux  goto 25
+
+
+state 19
+	cpf_exp : cpf_exp ARROW . cpf_exp  (12)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	DEREF  shift 9
+	.  error
+
+	cpf_exp  goto 26
+
+
+state 20
+	cpf_exp : cpf_exp DOT . cpf_exp  (11)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	DEREF  shift 9
+	.  error
+
+	cpf_exp  goto 27
+
+
+state 21
+	cpf_exp_list : cpf_exp cpf_exp_list .  (8)
+
+	.  reduce 8
+
+
+state 22
+	cpf_exp_list : cpf_exp .  (7)
+	cpf_exp_list : cpf_exp . cpf_exp_list  (8)
+	cpf_exp : cpf_exp . DOT cpf_exp  (11)
+	cpf_exp : cpf_exp . ARROW cpf_exp  (12)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	ARROW  shift 19
+	DEREF  shift 9
+	DOT  shift 20
+	RPAREN  reduce 7
+	END  reduce 7
+
+	cpf_exp_list  goto 21
+	cpf_exp  goto 22
+
+
+state 23
+	cpf_exp : LPAREN cpf_annotation_aux RPAREN .  (10)
+
+	.  reduce 10
+
+
+state 24
+	cs_cpf_exp_list_aux : cpf_exp .  (5)
+	cs_cpf_exp_list_aux : cpf_exp . COMMA cs_cpf_exp_list_aux  (6)
+	cpf_exp : cpf_exp . DOT cpf_exp  (11)
+	cpf_exp : cpf_exp . ARROW cpf_exp  (12)
+
+	COMMA  shift 28
+	ARROW  shift 19
+	DOT  shift 20
+	RPAREN  reduce 5
+	END  reduce 5
+
+
+state 25
+	cs_cpf_exp_list : cpf_exp COMMA cs_cpf_exp_list_aux .  (4)
+
+	.  reduce 4
+
+
+state 26
+	cpf_exp : cpf_exp . DOT cpf_exp  (11)
+	cpf_exp : cpf_exp . ARROW cpf_exp  (12)
+	cpf_exp : cpf_exp ARROW cpf_exp .  (12)
+
+	.  reduce 12
+
+
+state 27
+	cpf_exp : cpf_exp . DOT cpf_exp  (11)
+	cpf_exp : cpf_exp DOT cpf_exp .  (11)
+	cpf_exp : cpf_exp . ARROW cpf_exp  (12)
+
+	.  reduce 11
+
+
+state 28
+	cs_cpf_exp_list_aux : cpf_exp COMMA . cs_cpf_exp_list_aux  (6)
+
+	FSYM  shift 3
+	VSYM  shift 4
+	VAR  shift 5
+	UNINTERP  shift 6
+	NUM  shift 7
+	LPAREN  shift 8
+	DEREF  shift 9
+	.  error
+
+	cpf_exp  goto 24
+	cs_cpf_exp_list_aux  goto 29
+
+
+state 29
+	cs_cpf_exp_list_aux : cpf_exp COMMA cs_cpf_exp_list_aux .  (6)
+
+	.  reduce 6
+
+
+16 terminals, 8 nonterminals
+19 grammar rules, 30 states
